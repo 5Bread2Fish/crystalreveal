@@ -2,10 +2,12 @@
 
 import { useState, useRef, DragEvent, useEffect } from "react";
 import Image from "next/image";
-import { Upload, Download, Loader2, Sparkles, ExternalLink, ArrowRight, CreditCard, Lock, RefreshCcw, Maximize2, X, Timer } from "lucide-react";
+import { Upload, Download, Loader2, Sparkles, ExternalLink, ArrowRight, CreditCard, Lock, RefreshCcw, Maximize2, X, Timer, User as UserIcon, LogOut } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { upload } from "@vercel/blob/client";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 
 // Helper to convert file to base64 for storage
 const fileToBase64 = (file: File): Promise<string> => {
@@ -17,82 +19,33 @@ const fileToBase64 = (file: File): Promise<string> => {
     });
 };
 
-
-import { useSearchParams } from "next/navigation";
+interface GeneratedImages {
+    basic: string;
+    advanced: string;
+    original: string;
+    id: string;
+    isUnlocked: boolean;
+}
 
 export default function Home() {
+    const { data: session, status } = useSession();
+    const router = useRouter();
+
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const [generatedImages, setGeneratedImages] = useState<{ basic: string; advanced: string; original: string; id: string } | null>(null);
-    const [activeTab, setActiveTab] = useState<"basic" | "advanced">("basic");
+    const [generatedImages, setGeneratedImages] = useState<GeneratedImages | null>(null);
     const [ratings, setRatings] = useState<{ basic: number; advanced: number }>({ basic: 0, advanced: 0 });
     const [isCompareMode, setIsCompareMode] = useState(false);
     const [error, setError] = useState("");
 
     const [dragActive, setDragActive] = useState(false);
-    const [isPaid, setIsPaid] = useState(false);
     const [gallery, setGallery] = useState<{ before: string; after: string }[]>([]);
-
-    // We can't use useSearchParams directly in the component body safely without Suspense boundary in some Next.js setups, 
-    // but for client-side only (use client), it's generally okay or we check window.
-    // To be safe and simple:
-    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // TOS State
     const [tosAgreed, setTosAgreed] = useState(false);
-
-    // Payment Success / Recovery Logic
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-
-        const isSuccess = searchParams?.get("success") === "true";
-        if (isSuccess) {
-            setIsPaid(true);
-
-            // Recover pending image
-            const pendingBasic = localStorage.getItem("bomee_pending_basic");
-            const pendingAdvanced = localStorage.getItem("bomee_pending_advanced");
-            const pendingPreview = localStorage.getItem("bomee_pending_preview");
-            const pendingId = localStorage.getItem("bomee_pending_id");
-
-            if (pendingBasic && pendingAdvanced && pendingPreview) {
-                // If we have an ID, mark as paid
-                if (pendingId) {
-                    fetch('/api/checkout/success', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: pendingId })
-                    }).catch(console.error);
-                }
-
-                setGeneratedImages({ basic: pendingBasic, advanced: pendingAdvanced, original: pendingPreview, id: pendingId || "" });
-                setPreview(pendingPreview);
-
-                // Save to gallery (using Basic as the thumbnail/main one for now, or maybe create two entries?)
-                // Strategy: Save Basic for now as it is the "standard".
-                // Ideally we save both.
-
-                setGallery(prev => {
-                    if (prev.some(item => item.after === pendingBasic)) return prev;
-                    const newItem = { before: pendingPreview, after: pendingBasic };
-                    const updated = [newItem, ...prev].slice(0, 30);
-                    localStorage.setItem("bomee_gallery_v2", JSON.stringify(updated));
-                    return updated;
-                });
-
-                // Clear pending
-                localStorage.removeItem("bomee_pending_basic");
-                localStorage.removeItem("bomee_pending_advanced");
-                localStorage.removeItem("bomee_pending_preview");
-                localStorage.removeItem("bomee_pending_id");
-
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-        }
-    }, [searchParams]);
 
     // Load global gallery on mount
     useEffect(() => {
@@ -109,46 +62,6 @@ export default function Home() {
         };
         fetchGallery();
     }, []);
-
-    const saveToGallery = async (before: string, after: string) => {
-        // Optimistic update (show immediately)
-        const newItem = { before, after };
-        setGallery(prev => [newItem, ...prev].slice(0, 30));
-
-        // Helper: Convert Base64 to Blob
-        const base64ToBlob = async (base64: string): Promise<Blob> => {
-            const res = await fetch(base64);
-            return res.blob();
-        };
-
-        try {
-            // Convert to blobs
-            const [beforeBlob, afterBlob] = await Promise.all([
-                base64ToBlob(before),
-                base64ToBlob(after)
-            ]);
-
-            const id = Date.now().toString();
-
-            // Upload directly to Vercel Blob (bypasses server body limit)
-            const uploadFile = async (blob: Blob, type: "before" | "after") => {
-                await upload(`gallery/${id}_${type}.png`, blob, {
-                    access: 'public',
-                    handleUploadUrl: '/api/gallery/upload',
-                });
-            };
-
-            await Promise.all([
-                uploadFile(beforeBlob, "before"),
-                uploadFile(afterBlob, "after")
-            ]);
-
-        } catch (e) {
-            console.error("Failed to upload to global gallery", e);
-            // Optionally revert the optimistic update here if desired, 
-            // but for UX keeping it visible locally is fine.
-        }
-    };
 
     const handleDrag = (e: DragEvent) => {
         e.preventDefault();
@@ -179,7 +92,6 @@ export default function Home() {
         setError("");
         setGeneratedImages(null);
         setRatings({ basic: 0, advanced: 0 }); // Reset ratings
-        setIsPaid(false); // Reset payment state for new file
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -203,7 +115,6 @@ export default function Home() {
         setLoading(true);
         setError("");
         setGeneratedImages(null);
-        setIsPaid(false);
 
         // Timer interval
         const timer = setInterval(() => {
@@ -229,7 +140,13 @@ export default function Home() {
             }
 
             if (data.basic && data.advanced) {
-                setGeneratedImages({ basic: data.basic, advanced: data.advanced, original: preview || "", id: data.id });
+                setGeneratedImages({
+                    basic: data.basic,
+                    advanced: data.advanced,
+                    original: preview || "",
+                    id: data.id,
+                    isUnlocked: data.isUnlocked || false
+                });
             } else {
                 setError("No image received from server.");
             }
@@ -270,32 +187,84 @@ export default function Home() {
     }, []);
 
 
-    const handlePayment = async () => {
-        if (!generatedImages || !file) return;
+    const handleUnlock = async () => {
+        if (!generatedImages?.id) return;
+
+        if (!session) {
+            // Guest Flow: Save to LocalStorage and redirect to Signup
+            localStorage.setItem("bomee_pending_claim", JSON.stringify({
+                id: generatedImages.id,
+                basic: generatedImages.basic,
+                advanced: generatedImages.advanced,
+                original: generatedImages.original
+            }));
+            router.push("/auth/signup?callbackUrl=/");
+            return;
+        }
+
+        // User Flow: Check Credits
+        const credits = session.user.credits || 0;
+        if (credits < 1) {
+            if (confirm("You need 1 credit to unlock this result. Go to Pricing?")) {
+                router.push("/pricing");
+            }
+            return;
+        }
+
+        if (!confirm(`Unlock this result for 1 Credit? (Balance: ${credits})`)) return;
 
         try {
-            const base64Preview = await fileToBase64(file);
+            setLoading(true);
+            const res = await fetch("/api/images/unlock", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ imageId: generatedImages.id })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setGeneratedImages(prev => prev ? { ...prev, isUnlocked: true } : null);
+                router.refresh(); // Refresh to update server-side session credits if needed, though we track optimistically
 
-            // Save state before redirecting
-            localStorage.setItem("bomee_pending_basic", generatedImages.basic);
-            localStorage.setItem("bomee_pending_advanced", generatedImages.advanced);
-            localStorage.setItem("bomee_pending_preview", base64Preview);
-            // Save ID to mark as paid on return
-            if (generatedImages.id) localStorage.setItem("bomee_pending_id", generatedImages.id);
-
-            // Direct to Stripe Payment Link
-            window.location.href = "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03";
+                // Hack to update session client side? NextAuth automatically updates on focus/activity usually.
+                // We can force a reload or just let it be.
+            } else {
+                if (res.status === 402) {
+                    if (confirm("Insufficient credits. Go to Pricing?")) router.push("/pricing");
+                } else {
+                    alert(data.error || "Failed to unlock");
+                }
+            }
         } catch (e) {
-            console.error("Error saving preview for payment redirect", e);
-            alert("Unexpected error preparing payment. Please try again.");
+            console.error("Unlock failed", e);
+            alert("Error unlocking image");
+        } finally {
+            setLoading(false);
         }
     };
 
+    // Auto-claim guest images on login
+    useEffect(() => {
+        if (status === "authenticated" && session?.user) {
+            const pending = localStorage.getItem("bomee_pending_claim");
+            if (pending) {
+                try {
+                    const { id } = JSON.parse(pending);
+                    fetch("/api/images/claim", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ imageId: id })
+                    }).then(res => res.json()).then(data => {
+                        if (data.success) {
+                            localStorage.removeItem("bomee_pending_claim");
+                        }
+                    });
+                } catch (e) { }
+            }
+        }
+    }, [status, session]);
+
     const handleRate = async (style: "basic" | "advanced", score: number) => {
         setRatings(prev => ({ ...prev, [style]: score }));
-        // Just update local state for now, will submit to backend later via separate effect or immediate call
-        // User requested tracking: country, time, generate count, ratings, paid, download, visible.
-        // We should send this to an analytics endpoint.
 
         if (!generatedImages?.id) return;
 
@@ -340,7 +309,6 @@ export default function Home() {
                 window.URL.revokeObjectURL(blobUrl);
             } catch (e) {
                 console.error("Download failed", e);
-                // Fallback
                 window.open(url, '_blank');
             }
         };
@@ -378,12 +346,12 @@ export default function Home() {
                         <div className="relative h-full bg-black/50 group">
                             <div className="absolute top-4 left-4 z-10 bg-blue-500/80 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold uppercase tracking-wider">Basic</div>
                             <Image src={generatedImages.basic} alt="Basic" fill className="object-contain" />
-                            {!isPaid && (
-                                <div className="absolute inset-0 z-10 pointer-events-none bg-black/10 overflow-hidden flex flex-col justify-center gap-24 -rotate-12 scale-150">
+                            {!generatedImages.isUnlocked && (
+                                <div className="absolute inset-0 z-10 pointer-events-none bg-black/10 overflow-hidden flex flex-col justify-center gap-24 -rotate-12 scale-150 backdrop-blur-sm">
                                     {Array.from({ length: 5 }).map((_, row) => (
                                         <div key={row} className="flex justify-center gap-12 items-center bg-transparent whitespace-nowrap opacity-30 font-bold text-white text-xl uppercase tracking-widest select-none" style={{ transform: row % 2 === 0 ? 'translateX(40px)' : 'translateX(-40px)' }}>
                                             {Array.from({ length: 5 }).map((_, col) => (
-                                                <span key={col}>Pro Preview</span>
+                                                <span key={col}>Preview Only</span>
                                             ))}
                                         </div>
                                     ))}
@@ -395,12 +363,12 @@ export default function Home() {
                         <div className="relative h-full bg-black/50 group">
                             <div className="absolute top-4 left-4 z-10 bg-purple-500/80 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold uppercase tracking-wider">Advanced</div>
                             <Image src={generatedImages.advanced} alt="Advanced" fill className="object-contain" />
-                            {!isPaid && (
-                                <div className="absolute inset-0 z-10 pointer-events-none bg-black/10 overflow-hidden flex flex-col justify-center gap-24 -rotate-12 scale-150">
+                            {!generatedImages.isUnlocked && (
+                                <div className="absolute inset-0 z-10 pointer-events-none bg-black/10 overflow-hidden flex flex-col justify-center gap-24 -rotate-12 scale-150 backdrop-blur-sm">
                                     {Array.from({ length: 5 }).map((_, row) => (
                                         <div key={row} className="flex justify-center gap-12 items-center bg-transparent whitespace-nowrap opacity-30 font-bold text-white text-xl uppercase tracking-widest select-none" style={{ transform: row % 2 === 0 ? 'translateX(40px)' : 'translateX(-40px)' }}>
                                             {Array.from({ length: 5 }).map((_, col) => (
-                                                <span key={col}>Pro Preview</span>
+                                                <span key={col}>Preview Only</span>
                                             ))}
                                         </div>
                                     ))}
@@ -411,19 +379,47 @@ export default function Home() {
                 </div>
             )}
 
-            {/* ... Navbar (unchanged) ... */}
+            {/* Navbar */}
             <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-purple-100">
                 <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="relative h-8 w-32">
-                            <Image src="/bomee-logo.png" alt="Bomee" fill className="object-contain object-left" />
-                        </div>
-                    </div>
-                    <div>
-                        <Link href="/admin" className="text-sm font-medium text-gray-500 hover:text-purple-600 transition-colors flex items-center gap-1">
-                            <Lock className="w-3 h-3" />
-                            Admin
+                        <Link href="/">
+                            <div className="relative h-8 w-32">
+                                <Image src="/bomee-logo.png" alt="Bomee" fill className="object-contain object-left" />
+                            </div>
                         </Link>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        {status === "loading" ? (
+                            <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
+                        ) : session ? (
+                            <div className="flex items-center gap-4">
+                                <Link href="/pricing" className="text-sm font-medium text-purple-600 bg-purple-50 px-3 py-1.5 rounded-full border border-purple-100 hover:bg-purple-100 transition-colors">
+                                    {session.user.credits} Credits
+                                </Link>
+                                <div className="relative group">
+                                    <button className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-purple-600">
+                                        <UserIcon className="w-5 h-5" />
+                                        <span>{session.user.email?.split('@')[0]}</span>
+                                    </button>
+                                    <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-2 z-50">
+                                        <Link href="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">Dashboard</Link>
+                                        <Link href="/pricing" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">Buy Credits</Link>
+                                        <Link href="/admin" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">Admin</Link>
+                                        <button onClick={() => signOut()} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2">
+                                            <LogOut className="w-4 h-4" /> Sign Out
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-4">
+                                <Link href="/auth/signin" className="text-sm font-medium text-gray-600 hover:text-purple-600">Sign In</Link>
+                                <Link href="/auth/signup" className="text-sm font-medium text-white bg-purple-600 px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors shadow-sm shadow-purple-200">
+                                    Sign Up
+                                </Link>
+                            </div>
+                        )}
                     </div>
                 </div>
             </nav>
@@ -544,15 +540,13 @@ export default function Home() {
                                     {generatedImages ? (
                                         <div className="relative w-full h-full bg-black">
                                             <Image src={generatedImages.basic} alt="Basic" fill className="object-contain" />
-                                            {!isPaid && (
-                                                <div className="absolute inset-0 z-10 pointer-events-none bg-black/10 overflow-hidden flex flex-col justify-center gap-12 -rotate-12 scale-150">
+                                            {!generatedImages.isUnlocked && (
+                                                <div className="absolute inset-0 z-10 pointer-events-none bg-black/10 overflow-hidden flex flex-col justify-center gap-12 -rotate-12 scale-150 backdrop-blur-sm">
                                                     {Array.from({ length: 10 }).map((_, row) => (
                                                         <div key={row} className="flex justify-center gap-8 items-center bg-transparent whitespace-nowrap opacity-40 font-bold text-white text-xs uppercase tracking-widest select-none" style={{ transform: row % 2 === 0 ? 'translateX(20px)' : 'translateX(-20px)' }}>
                                                             {Array.from({ length: 8 }).map((_, col) => (
                                                                 <div key={col} className="flex items-center gap-2">
-                                                                    <div className="relative w-4 h-4 opacity-80"><Image src="/icon.png" alt="" fill className="object-contain" /></div>
-                                                                    <span>Bomee</span>
-                                                                    <span>CrystalReveal</span>
+                                                                    <span>Preview Only</span>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -605,15 +599,13 @@ export default function Home() {
                                     {generatedImages ? (
                                         <div className="relative w-full h-full bg-black">
                                             <Image src={generatedImages.advanced} alt="Advanced" fill className="object-contain" />
-                                            {!isPaid && (
-                                                <div className="absolute inset-0 z-10 pointer-events-none bg-black/10 overflow-hidden flex flex-col justify-center gap-12 -rotate-12 scale-150">
+                                            {!generatedImages.isUnlocked && (
+                                                <div className="absolute inset-0 z-10 pointer-events-none bg-black/10 overflow-hidden flex flex-col justify-center gap-12 -rotate-12 scale-150 backdrop-blur-sm">
                                                     {Array.from({ length: 10 }).map((_, row) => (
                                                         <div key={row} className="flex justify-center gap-8 items-center bg-transparent whitespace-nowrap opacity-40 font-bold text-white text-xs uppercase tracking-widest select-none" style={{ transform: row % 2 === 0 ? 'translateX(20px)' : 'translateX(-20px)' }}>
                                                             {Array.from({ length: 8 }).map((_, col) => (
                                                                 <div key={col} className="flex items-center gap-2">
-                                                                    <div className="relative w-4 h-4 opacity-80"><Image src="/icon.png" alt="" fill className="object-contain" /></div>
-                                                                    <span>Bomee</span>
-                                                                    <span>CrystalReveal</span>
+                                                                    <span>Preview Only</span>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -659,7 +651,7 @@ export default function Home() {
                                 )}
 
                                 {/* Download All Button (Aligned with Regenerate Row) */}
-                                {generatedImages && isPaid && (
+                                {generatedImages && generatedImages.isUnlocked && (
                                     <button
                                         onClick={handleDownloadAll}
                                         className="w-full h-12 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-lg flex items-center justify-center gap-2 transition-all"
@@ -670,8 +662,8 @@ export default function Home() {
                             </div>
                         </div>
 
-                        {/* Payment Footer (Only if NOT paid) */}
-                        {generatedImages && !isPaid && (
+                        {/* Unlock Result Footer */}
+                        {generatedImages && !generatedImages.isUnlocked && (
                             <div className="mt-8 w-full max-w-lg mx-auto">
                                 <div className="flex gap-3 p-2 bg-white rounded-2xl border border-gray-100 shadow-xl shadow-purple-900/5">
                                     <button
@@ -682,11 +674,11 @@ export default function Home() {
                                         <span className="text-sm">Compare</span>
                                     </button>
                                     <button
-                                        onClick={handlePayment}
+                                        onClick={handleUnlock}
                                         className="flex-[1.5] py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-md shadow-purple-200 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02]"
                                     >
-                                        <CreditCard className="w-5 h-5" />
-                                        <span>Unlock All Results ($9.99)</span>
+                                        <Lock className="w-5 h-5" />
+                                        <span>Unlock Result (1 Credit)</span>
                                     </button>
                                 </div>
                             </div>
@@ -798,8 +790,8 @@ export default function Home() {
                                     <span><strong className="text-white">Universal Compatibility:</strong> Works flawlessly with your existing ultrasound machines (GE, Samsung, Mindray, etc.).</span>
                                 </li>
                                 <li className="flex gap-2">
-                                    <span className="text-blue-200">⚡</span>
-                                    <span><strong className="text-white">Instant Delivery:</strong> No more burning CDs. Videos and photos are auto-organized into the Bomee App Album.</span>
+                                    <span className="text-white">📱</span>
+                                    <span><strong className="text-white">Instant Delivery:</strong> Parents receive their photos via SMS/Email instantly. No more USB drives.</span>
                                 </li>
                             </ul>
                         </div>
@@ -807,54 +799,26 @@ export default function Home() {
                         {/* Benefit 3 */}
                         <div className="bg-white/10 backdrop-blur-sm p-8 rounded-2xl border border-white/20 hover:bg-white/20 transition-colors shadow-lg">
                             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-6 shadow-md">
-                                <RefreshCcw className="w-6 h-6 text-green-500" />
+                                <ArrowRight className="w-6 h-6 text-green-500" />
                             </div>
-                            <h3 className="text-xl font-bold mb-4 text-white">3. Automated Client Retention</h3>
+                            <h3 className="text-xl font-bold mb-4 text-white">3. New Revenue Stream</h3>
                             <p className="text-purple-100 text-sm mb-4">
-                                Turn one-time visits into loyal, repeat customers without lifting a finger.
+                                Turn your ultrasound service into a premium art experience.
                             </p>
                             <ul className="space-y-2 text-sm text-purple-200">
                                 <li className="flex gap-2">
-                                    <span className="text-green-300">🔔</span>
-                                    <span><strong className="text-white">Smart Push Notifications:</strong> Bomee app sends timely reminders for the next scan (Gender Reveal, 4D Face).</span>
+                                    <span className="text-green-300">💰</span>
+                                    <span><strong className="text-white">Upsell Opportunity:</strong> Offer "8K AI Enhancement" as a premium add-on to your existing packages.</span>
                                 </li>
                                 <li className="flex gap-2">
-                                    <span className="text-green-300">💰</span>
-                                    <span><strong className="text-white">Drive Traffic Back:</strong> We direct them straight back to your booking page.</span>
+                                    <span className="text-white">🚀</span>
+                                    <span><strong className="text-white">Zero Overhead:</strong> No new hardware. Pay-per-use model. You keep the margin.</span>
                                 </li>
                             </ul>
                         </div>
                     </div>
-
-                    <div className="mt-16 bg-white p-8 md:p-12 rounded-3xl border border-white/20 text-center relative overflow-hidden shadow-2xl">
-                        <div className="relative z-10">
-                            <h3 className="text-3xl font-bold mb-4 text-purple-900">🚀 Start Your 1-Month Free Trial Today</h3>
-                            <p className="text-lg text-purple-700 max-w-2xl mx-auto mb-8">
-                                Experience the difference risk-free. Our team will set up your integration within days. Transparent pricing, no strings attached.
-                            </p>
-                            <a
-                                href="https://www.bomee.io/?lb=contact"
-                                target="_blank"
-                                className="inline-flex items-center justify-center bg-purple-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-purple-700 transition-all shadow-xl shadow-purple-600/20 transform hover:scale-105"
-                            >
-                                Request My Free Trial
-                            </a>
-                        </div>
-                    </div>
-
                 </div>
             </section>
-            {/* Footer */}
-            <footer className="bg-gray-50 border-t border-gray-200 py-12">
-                <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-                    <p className="text-gray-500 text-sm">© 2026 Humanscape US INC. All rights reserved.</p>
-                    <div className="flex flex-col md:flex-row gap-6 text-sm font-medium text-gray-600 items-center">
-                        <a href="https://www.bomee.io/privacy-policy" className="hover:text-purple-600">Privacy Policy</a>
-                        <a href="https://www.bomee.io/dnsmpi" className="hover:text-purple-600">Do Not Sell or Share My Personal Information</a>
-                        <a href="https://www.bomee.io/" className="hover:text-purple-600">Bomee</a>
-                    </div>
-                </div>
-            </footer>
         </div>
     );
 }

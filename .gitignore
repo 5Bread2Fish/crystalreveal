@@ -33,3 +33,5 @@ pnpm-debug.log*
 .env*.local
 test-output/
 credentials.json
+
+/lib/generated/prisma

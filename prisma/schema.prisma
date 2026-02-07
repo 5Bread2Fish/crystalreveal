@@ -1,0 +1,54 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  password          String
+  userType          String   // INDIVIDUAL, BUSINESS
+  credits           Int      @default(0)
+  businessName      String?
+  ownerName         String?
+  phoneNumber       String?
+  monthlyScanVolume String?
+  marketingAgreed   Boolean  @default(true)
+  marketingAgreedAt DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  images       ImageGeneration[]
+  transactions CreditTransaction[]
+}
+
+model ImageGeneration {
+  id              String   @id @default(cuid())
+  userId          String?
+  sessionId       String?  // For guest users
+  originalUrl     String?
+  basicUrl        String?
+  advancedUrl     String? 
+  isUnlocked      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+model CreditTransaction {
+  id             String   @id @default(cuid())
+  userId         String
+  amountPaid     Decimal
+  creditsChange  Int
+  transactionType String // CHARGE, USE, BONUS
+  stripeChargeId String?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}

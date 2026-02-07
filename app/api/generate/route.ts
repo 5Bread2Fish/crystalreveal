@@ -3,6 +3,9 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/ge
 import { put, list } from '@vercel/blob';
 import { randomUUID } from 'crypto';
 import { addRecord } from '@/lib/storage';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
     try {
@@ -13,6 +16,9 @@ export async function POST(req: NextRequest) {
         const ip = req.headers.get("x-forwarded-for") || "unknown";
         const country = req.headers.get("x-vercel-ip-country") || "unknown"; // Vercel Header
         const requestId = randomUUID();
+
+        // Check Session
+        const session = await getServerSession(authOptions);
 
         // API Key (AI Studio)
         const apiKey = process.env.GOOGLE_API_KEY || "AIzaSyAF9koxXcFabzhYTK9SE9N7guDtgHF86Ms";
@@ -29,19 +35,24 @@ export async function POST(req: NextRequest) {
 
         // [안전 설정] 최대한 풀어줍니다.
         const model = genAI.getGenerativeModel({
-            model: "gemini-3-pro-image-preview",
-            safetySettings: [
-                { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-                { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-                { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-                { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
-            ],
-            generationConfig: {
-                temperature: 0.15, // 원본 형태 유지를 위해 낮은 값 사용
-                topP: 0.85, // (옵션) topP: 0.8~0.9 정도로 설정하면 엉뚱한 결과가 나오는 것을 막을 수 있습니다.
-                topK: 40
-            }
+            model: "gemini-1.5-pro",
         });
+
+        // Actually, to be safe, I'll use the EXACT original model string.
+        const originalModel = "gemini-3-pro-image-preview";
+
+        const safetySettings = [
+            { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+            { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+            { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+        ];
+
+        const generationConfig = {
+            temperature: 0.15,
+            topP: 0.85,
+            topK: 40
+        };
 
         // Definiing Prompts
         const basicPrompt = `
@@ -79,42 +90,19 @@ export async function POST(req: NextRequest) {
         A hyper-realistic restoration that looks exactly like *this specific baby* (not a generic one), retaining the original ultrasound's color and vibe, but with crystal-clear 8K definition.
         `;
 
-        /* const advancedPrompt = `
-        **Role & Task:**
-        You are an expert medical illustrator and AI vision specialist. Convert this 3D ultrasound raw image into a hyper-realistic, high-definition fetal portrait.
-
-        **1. [CRITICAL] Structural Anchoring & Pose Preservation:**
-        * **Core Rule:** You must **STRICTLY PRESERVE** the original camera angle, head tilt, body position, and general facial structure.
-        * **Identity Lock:** The facial features (nose shape, mouth width, cheek volume) must be retained 100% to preserve the baby's identity.
-
-        **2. [MANDATORY] Force Sleeping State (Eyes Closed):**
-        * **Override Rule:** Regardless of the input's appearance, **you must render the baby with EYES CLOSED.**
-        * **Visual Detail:** Render delicate eyelids resting peacefully. Fine eyelashes touching the cheeks. The expression must be tranquil and sleeping.
-        * **Negative Constraint:** **NEVER render open eyes, staring pupils, or a startled expression.** Interpret any dark shadows in the eye sockets as closed eyelids with deep shadows.
-
-        **3. Smart Obstruction Clearance:**
-        * **Analyze & Remove:** Detect and remove ONLY objects blocking the face (umbilical cords, placenta, hands covering face, noise).
-        * **In-paint:** Reconstruct the hidden facial areas naturally, blending seamlessly with surrounding anatomy.
-
-        **4. Ultrasound Color Fidelity & Bio-Interpretation (CRITICAL):**
-        * **Color Constraint:** **Do NOT introduce standard human skin tones (pinks, peaches, terracotta).** You must strictly adhere to the overall hue and color palette of the source ultrasound image (e.g., monochromatic sepia, golden-orange, or greyscale hues).
-        * **Bio-Interpretation:** Interpret these synthetic ultrasound colors as if they were real, translucent biological tissue lit by a strong colored light source matching the input hue.
-        * **Realism through Texture, Not Color:** Achieve hyper-realism solely through **subsurface scattering, moisture, and fine details** (pores, fine lanugo hair) *within the original color bounds*. The result should look like a photorealistic sculpture made of amber or living golden tissue.
-
-        **5. Lighting & Atmosphere:**
-        * **Environment:** Clear amniotic fluid background, matching the original color tone.
-        * **Lighting:** Volumetric lighting that enhances depth. Shadows must be soft and follow the monochrome color scheme of the input.
-
-        **Output Goal:**
-        A photorealistic portrait of a sleeping baby that retains the exact color and vibe of the original ultrasound, removing only the obstructions and noise to reveal the realistic texture underneath.
-        `; */
-
         console.log(`Sending 'CrystalReveal' Dual Generation request (${requestId})...`);
+
+        // Re-instantiate model with config
+        const generativeModel = genAI.getGenerativeModel({
+            model: originalModel,
+            safetySettings,
+            generationConfig
+        });
 
         // Run in parallel
         const [basicResult, advancedResult] = await Promise.all([
-            model.generateContent([basicPrompt, { inlineData: { data: base64Image, mimeType: fileType } }]),
-            model.generateContent([advancedPrompt, { inlineData: { data: base64Image, mimeType: fileType } }])
+            generativeModel.generateContent([basicPrompt, { inlineData: { data: base64Image, mimeType: fileType } }]),
+            generativeModel.generateContent([advancedPrompt, { inlineData: { data: base64Image, mimeType: fileType } }])
         ]);
 
         const getBuffer = async (res: any) => {
@@ -124,8 +112,6 @@ export async function POST(req: NextRequest) {
                 if (part.inlineData && part.inlineData.data) {
                     return Buffer.from(part.inlineData.data, 'base64');
                 }
-                // Text fallback not ideal for buffer but handling just in case logic needed? 
-                // Gemini images usually return inlineData.
             }
             return null;
         };
@@ -137,7 +123,6 @@ export async function POST(req: NextRequest) {
             throw new Error("One or both images failed to generate due to safety filters.");
         }
 
-        // Upload to Blob for Persistence & History
         // Upload to Blob for Persistence & History
         console.log("Uploading to Blob...");
 
@@ -159,7 +144,7 @@ export async function POST(req: NextRequest) {
             put(`history/${requestId}_original.png`, buffer, { access: 'public', contentType: 'image/png' })
         ]);
 
-        // Save to Central Database
+        // Save to Central Database (Legacy)
         const record = {
             id: requestId,
             timestamp: new Date().toISOString(),
@@ -176,14 +161,29 @@ export async function POST(req: NextRequest) {
 
         await addRecord(record);
 
-        // Legacy support (optional, can remove later if clean break desired)
-        // await put(`history/${requestId}_metadata.json`, JSON.stringify(record), { access: 'public', contentType: 'application/json' });
+        // Save to Prisma (New Logic)
+        try {
+            await prisma.imageGeneration.create({
+                data: {
+                    id: requestId,
+                    userId: session?.user?.id || null,
+                    sessionId: session?.user?.id ? null : requestId, // For guest, use requestId as session identifier for now
+                    originalUrl: originalBlob.url,
+                    basicUrl: basicBlob.url,
+                    advancedUrl: advancedBlob.url,
+                    isUnlocked: false,
+                }
+            });
+        } catch (e) {
+            console.error("Failed to save to Prisma:", e);
+        }
 
         return NextResponse.json({
             success: true,
             id: requestId,
             basic: basicBlob.url,
-            advanced: advancedBlob.url
+            advanced: advancedBlob.url,
+            isUnlocked: false
         });
 
     } catch (error: any) {
