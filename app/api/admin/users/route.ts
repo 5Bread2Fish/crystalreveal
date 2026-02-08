@@ -21,7 +21,7 @@ export async function GET() {
         });
 
         // Safe user object (omit password)
-        const safeUsers = users.map(user => ({
+        const safeUsers = users.map((user: any) => ({
             id: user.id,
             email: user.email,
             userType: user.userType,
