@@ -18,7 +18,7 @@ export async function POST(req: Request) {
         }
 
         // Start transaction
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
             // 1. Check User Credits
             const user = await tx.user.findUnique({
                 where: { id: session.user.id },
