@@ -5,7 +5,17 @@ import bcrypt from "bcryptjs";
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { email, password, userType, businessName, ownerName, phoneNumber, monthlyScanVolume } = body;
+        const {
+            email,
+            password,
+            userType,
+            businessName,
+            ownerName,
+            phoneNumber,
+            monthlyScanVolume,
+            pregnancyWeeks,
+            marketingAgreed
+        } = body;
 
         if (!email || !password) {
             return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
@@ -30,6 +40,9 @@ export async function POST(req: Request) {
                 ownerName,
                 phoneNumber,
                 monthlyScanVolume,
+                pregnancyWeeks,
+                marketingAgreed: marketingAgreed ?? true,
+                marketingAgreedAt: marketingAgreed ? new Date() : null,
                 credits: 0, // Start with 0 credits
             },
         });
@@ -38,8 +51,13 @@ export async function POST(req: Request) {
         const { password: _, ...userWithoutPassword } = user;
 
         return NextResponse.json({ user: userWithoutPassword }, { status: 201 });
-    } catch (error) {
-        console.error("Signup error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    } catch (error: any) {
+        console.error("Signup error details:", {
+            message: error.message,
+            code: error.code,
+            meta: error.meta,
+            stack: error.stack
+        });
+        return NextResponse.json({ error: "Internal server error: " + error.message }, { status: 500 });
     }
 }

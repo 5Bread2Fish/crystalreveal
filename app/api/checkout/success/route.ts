@@ -1,43 +1,83 @@
-
 import { NextResponse } from 'next/server';
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    typescript: true,
+});
 
 export async function POST(req: Request) {
     try {
-        const { id } = await req.json();
+        const { sessionId } = await req.json();
         const session = await getServerSession(authOptions);
 
-        if (!id) {
-            return NextResponse.json({ error: "Missing ID" }, { status: 400 });
+        if (!sessionId) {
+            return NextResponse.json({ error: "Missing Session ID" }, { status: 400 });
         }
 
-        // Ideally verify payment here via Stripe session ID search, but for now we assume functionality
-        // This endpoint should be secured or removed in production favor of Webhooks.
-
-        // Update ImageGeneration
-        await prisma.imageGeneration.update({
-            where: { id },
-            data: { isUnlocked: true }
+        // 1. Retrieve Stripe Session
+        const stripeSession = await stripe.checkout.sessions.retrieve(sessionId, {
+            expand: ['total_details.breakdown']
         });
 
-        // Also Log Transaction if user is logged in
-        if (session?.user) {
-            await prisma.creditTransaction.create({
-                data: {
-                    userId: session.user.id,
-                    amountPaid: 9.99, // Assumption based on legacy single unlock
-                    creditsChange: 0, // Direct unlock, no credit change? Or add 1 and deduct 1?
-                    transactionType: "PURCHASE_DIRECT_UNLOCK",
-                }
-            });
+        if (!stripeSession) {
+            return NextResponse.json({ error: "Invalid Session" }, { status: 404 });
         }
 
-        return NextResponse.json({ success: true });
+        if (stripeSession.payment_status !== "paid") {
+            return NextResponse.json({ error: "Payment not complete" }, { status: 400 });
+        }
+
+        // 2. Extract Metadata & Discount Info
+        const type = stripeSession.metadata?.type;
+        const credits = parseInt(stripeSession.metadata?.credits || "0");
+        const userId = stripeSession.metadata?.userId || session?.user?.id;
+
+        const amountTotal = (stripeSession.amount_total || 0) / 100;
+        const amountSubtotal = (stripeSession.amount_subtotal || 0) / 100;
+        const discountAmount = amountSubtotal - amountTotal;
+        const discountDetails = stripeSession.total_details?.breakdown?.discounts || [];
+        const couponCode = discountDetails.length > 0 ? discountDetails[0].discount.coupon.name || "PROMO" : null;
+
+        if (type !== "CREDIT_PURCHASE" || credits <= 0 || !userId) {
+            return NextResponse.json({ success: true, message: "Ignored non-credit purchase" });
+        }
+
+        // 3. Idempotency Check
+        const existingTx = await prisma.creditTransaction.findFirst({
+            where: { stripeChargeId: stripeSession.id }
+        });
+
+        if (existingTx) {
+            return NextResponse.json({ success: true, message: "Transaction already processed" });
+        }
+
+        // 4. Fulfill Credits
+        await prisma.$transaction([
+            prisma.creditTransaction.create({
+                data: {
+                    userId: userId,
+                    amountPaid: amountTotal,
+                    subtotal: amountSubtotal,
+                    discountAmount: discountAmount > 0 ? discountAmount : 0,
+                    couponCode: couponCode,
+                    creditsChange: credits,
+                    transactionType: "PURCHASE",
+                    stripeChargeId: stripeSession.id
+                }
+            }),
+            prisma.user.update({
+                where: { id: userId },
+                data: { credits: { increment: credits } }
+            })
+        ]);
+
+        return NextResponse.json({ success: true, newCredits: credits });
 
     } catch (e) {
-        console.error("Unlock Error:", e);
+        console.error("Success Handler Error:", e);
         return NextResponse.json({ error: "Internal Error" }, { status: 500 });
     }
 }

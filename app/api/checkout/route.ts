@@ -15,10 +15,25 @@ export async function POST(req: NextRequest) {
             typescript: true,
         });
 
-        const { imageUrl } = await req.json();
+        const body = await req.json();
+        const { priceId, userId } = body;
 
-        if (!imageUrl) {
-            return NextResponse.json({ error: "Image URL is required" }, { status: 400 });
+        if (!priceId) {
+            return NextResponse.json({ error: "Price ID is required" }, { status: 400 });
+        }
+
+        // Map Price IDs to Credits for Metadata Validation
+        const PRICE_ID_MAP: Record<string, number> = {
+            "price_1Sy5AwFC7UyjtHU9FMagFXzD": 1,
+            "price_1Sy4thFC7UyjtHU9HqyK1sT9": 20,
+            "price_1Sy518FC7UyjtHU947153HIV": 50,
+            "price_1Sy53vFC7UyjtHU9qSEPVP33": 100
+        };
+
+        const credits = PRICE_ID_MAP[priceId];
+
+        if (!credits) {
+            return NextResponse.json({ error: "Invalid Price ID" }, { status: 400 });
         }
 
         // Create Checkout Session
@@ -26,23 +41,18 @@ export async function POST(req: NextRequest) {
             payment_method_types: ["card"],
             line_items: [
                 {
-                    price_data: {
-                        currency: "usd",
-                        product_data: {
-                            name: "ClearFace AI - 8K Ultrasound Enhancement",
-                            description: "High-definition restoration of your fetal ultrasound.",
-                            images: ["https://bomee.io/images/logo.png"], // Placeholder logo
-                        },
-                        unit_amount: 499, // $4.99
-                    },
+                    price: priceId,
                     quantity: 1,
                 },
             ],
             mode: "payment",
+            allow_promotion_codes: true,
             success_url: `${req.headers.get("origin")}/?success=true&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${req.headers.get("origin")}/?canceled=true`,
             metadata: {
-                imageUrl: imageUrl.substring(0, 500), // Store ref to image if needed (truncated)
+                userId: userId || "", // Might be empty if guest, but usually we require login to buy
+                credits: credits.toString(),
+                type: "CREDIT_PURCHASE"
             },
         });
 

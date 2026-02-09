@@ -10,7 +10,7 @@ export default function TermsPage() {
                     Back to Home
                 </Link>
 
-                <h1 className="text-3xl font-extrabold text-gray-900 border-b pb-4">Terms of Service & Disclaimer</h1>
+                <h1 className="text-3xl font-extrabold text-gray-900 border-b pb-4">Terms of Service & Disclaimer and Privacy Policy</h1>
 
                 <div className="space-y-8 text-gray-700 leading-relaxed">
                     <section className="space-y-3">

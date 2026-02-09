@@ -27,9 +27,20 @@ export default function AdminPage() {
     const [stats, setStats] = useState<any>(null);
     const [settings, setSettings] = useState<{ autoPublish: boolean }>({ autoPublish: true });
 
-    // New State for Users
-    const [viewMode, setViewMode] = useState<"logs" | "users">("logs");
+    // New State for Users & Coupons
+    const [viewMode, setViewMode] = useState<"logs" | "users" | "coupons">("logs");
     const [users, setUsers] = useState<any[]>([]);
+    const [coupons, setCoupons] = useState<any[]>([]);
+
+    // Coupon Form
+    const [couponForm, setCouponForm] = useState({
+        name: "",
+        discountType: "percent", // percent | amount
+        value: "",
+        duration: "once", // once | forever | repeating
+        maxRedemptions: "",
+        code: ""
+    });
 
     // View State
     const [page, setPage] = useState(1);
@@ -50,11 +61,13 @@ export default function AdminPage() {
         try {
             const [statsRes, usersRes] = await Promise.all([
                 fetch("/api/admin/stats"),
-                fetch("/api/admin/users")
+                fetch("/api/admin/users"),
+                fetch("/api/admin/coupons")
             ]);
 
             const statsData = await statsRes.json();
             const usersData = await usersRes.json();
+            const couponsData = await couponsRes.json();
 
             if (statsData.history) {
                 const sorted = statsData.history.sort((a: Log, b: Log) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -63,6 +76,9 @@ export default function AdminPage() {
             }
             if (usersData.users) {
                 setUsers(usersData.users);
+            }
+            if (couponsData.coupons) {
+                setCoupons(couponsData.coupons);
             }
         } catch (e) {
             console.error(e);
@@ -214,6 +230,45 @@ export default function AdminPage() {
         }
     };
 
+    const handleCreateCoupon = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const res = await fetch("/api/admin/coupons", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: couponForm.name,
+                    percent_off: couponForm.discountType === "percent" ? couponForm.value : undefined,
+                    amount_off: couponForm.discountType === "amount" ? couponForm.value : undefined,
+                    duration: couponForm.duration,
+                    max_redemptions: couponForm.maxRedemptions,
+                    code: couponForm.code
+                })
+            });
+            if (res.ok) {
+                alert("Coupon Created!");
+                fetchStats(); // Refresh
+                setCouponForm({ name: "", discountType: "percent", value: "", duration: "once", maxRedemptions: "", code: "" });
+            } else {
+                const data = await res.json();
+                alert(`Error: ${data.error}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to create coupon");
+        }
+    };
+
+    const handleDeleteCoupon = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this coupon? This cannot be undone.")) return;
+        try {
+            await fetch(`/api/admin/coupons/${id}`, { method: "DELETE" });
+            fetchStats();
+        } catch (e) {
+            alert("Failed to delete");
+        }
+    };
+
     if (!isAuthenticated) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col gap-4">
@@ -270,6 +325,9 @@ export default function AdminPage() {
                     </button>
                     <button onClick={() => setViewMode("users")} className={cn("px-4 py-2 font-medium text-sm transition-colors relative", viewMode === "users" ? "text-purple-600 after:absolute after:bottom-[-5px] after:left-0 after:w-full after:h-0.5 after:bg-purple-600" : "text-gray-500 hover:text-gray-700")}>
                         Users ({users.length})
+                    </button>
+                    <button onClick={() => setViewMode("coupons")} className={cn("px-4 py-2 font-medium text-sm transition-colors relative", viewMode === "coupons" ? "text-purple-600 after:absolute after:bottom-[-5px] after:left-0 after:w-full after:h-0.5 after:bg-purple-600" : "text-gray-500 hover:text-gray-700")}>
+                        Coupons
                     </button>
                 </div>
 
@@ -349,6 +407,65 @@ export default function AdminPage() {
                                             <td className="px-6 py-3 font-bold text-purple-600">{u.credits}</td>
                                             <td className="px-6 py-3 text-gray-600">{u.imagesCount} Gen / {u.transactionsCount} Tx</td>
                                             <td className="px-6 py-3 text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : viewMode === "coupons" ? (
+                        <div className="p-6">
+                            {/* Create Form */}
+                            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 mb-8">
+                                <h3 className="font-bold text-lg mb-4">Create New Coupon</h3>
+                                <form onSubmit={handleCreateCoupon} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <input placeholder="Coupon Name (Internal)" value={couponForm.name} onChange={e => setCouponForm({ ...couponForm, name: e.target.value })} className="p-2 border rounded" required />
+                                    <input placeholder="Code (e.g. SUMMER25)" value={couponForm.code} onChange={e => setCouponForm({ ...couponForm, code: e.target.value })} className="p-2 border rounded" required />
+
+                                    <div className="flex gap-2">
+                                        <select value={couponForm.discountType} onChange={e => setCouponForm({ ...couponForm, discountType: e.target.value })} className="p-2 border rounded">
+                                            <option value="percent">Percentage (%)</option>
+                                            <option value="amount">Amount ($)</option>
+                                        </select>
+                                        <input type="number" placeholder="Value" value={couponForm.value} onChange={e => setCouponForm({ ...couponForm, value: e.target.value })} className="p-2 border rounded w-full" required />
+                                    </div>
+
+                                    <select value={couponForm.duration} onChange={e => setCouponForm({ ...couponForm, duration: e.target.value })} className="p-2 border rounded">
+                                        <option value="once">Once</option>
+                                        <option value="forever">Forever</option>
+                                        <option value="repeating">Repeating</option>
+                                    </select>
+
+                                    <input type="number" placeholder="Max Redemptions (Optional)" value={couponForm.maxRedemptions} onChange={e => setCouponForm({ ...couponForm, maxRedemptions: e.target.value })} className="p-2 border rounded" />
+
+                                    <button type="submit" className="bg-purple-600 text-white font-bold p-2 rounded hover:bg-purple-700">Create Coupon</button>
+                                </form>
+                            </div>
+
+                            {/* List */}
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50 text-gray-500 font-medium uppercase text-xs">
+                                    <tr>
+                                        <th className="px-6 py-3">Name</th>
+                                        <th className="px-6 py-3">Discount</th>
+                                        <th className="px-6 py-3">Duration</th>
+                                        <th className="px-6 py-3">Redemptions</th>
+                                        <th className="px-6 py-3">Created</th>
+                                        <th className="px-6 py-3 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {coupons.map((c) => (
+                                        <tr key={c.id}>
+                                            <td className="px-6 py-3 font-medium">{c.name}</td>
+                                            <td className="px-6 py-3">
+                                                {c.percent_off ? `${c.percent_off}% Off` : `$${(c.amount_off / 100).toFixed(2)} Off`}
+                                            </td>
+                                            <td className="px-6 py-3 capitalize">{c.duration}</td>
+                                            <td className="px-6 py-3">{c.times_redeemed} {c.max_redemptions ? `/ ${c.max_redemptions}` : ""}</td>
+                                            <td className="px-6 py-3">{new Date(c.created * 1000).toLocaleDateString()}</td>
+                                            <td className="px-6 py-3 text-right">
+                                                <button onClick={() => handleDeleteCoupon(c.id)} className="text-red-600 hover:text-red-800"><Trash2 className="w-4 h-4" /></button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

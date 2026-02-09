@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { User, CreditCard, Image as ImageIcon, Settings, LogOut, Loader2, Download, ExternalLink } from "lucide-react";
+import { User, CreditCard, Image as ImageIcon, Settings, LogOut, Loader2, Download, ExternalLink, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
@@ -42,10 +42,13 @@ export default function Dashboard() {
                         </Link>
                     </div>
                     <div className="flex items-center gap-4">
+                        <Link href="/help" className="p-2 text-gray-500 hover:text-purple-600 transition-colors" title="Need Help?">
+                            <HelpCircle className="w-5 h-5" />
+                        </Link>
                         <div className="text-sm font-medium text-purple-600 bg-purple-50 px-3 py-1.5 rounded-full border border-purple-100">
                             {session.user.credits} Credits
                         </div>
-                        <button onClick={() => signOut()} className="p-2 text-gray-500 hover:text-red-600 transition-colors">
+                        <button onClick={() => signOut({ callbackUrl: '/' })} className="p-2 text-gray-500 hover:text-red-600 transition-colors">
                             <LogOut className="w-5 h-5" />
                         </button>
                     </div>

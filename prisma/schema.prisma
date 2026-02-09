@@ -7,6 +7,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -18,6 +19,7 @@ model User {
   businessName      String?
   ownerName         String?
   phoneNumber       String?
+  pregnancyWeeks    String?
   monthlyScanVolume String?
   marketingAgreed   Boolean  @default(true)
   marketingAgreedAt DateTime?
@@ -45,8 +47,11 @@ model CreditTransaction {
   id             String   @id @default(cuid())
   userId         String
   amountPaid     Decimal
+  subtotal       Decimal? // Original amount before discount
+  discountAmount Decimal? // Discounted amount
+  couponCode     String?  // Code used
   creditsChange  Int
-  transactionType String // CHARGE, USE, BONUS
+  transactionType String // PURCHASE, USE, BONUS
   stripeChargeId String?
   createdAt      DateTime @default(now())
 

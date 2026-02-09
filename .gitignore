@@ -35,3 +35,7 @@ test-output/
 credentials.json
 
 /lib/generated/prisma
+prisma/dev.db
+venv/
+prisma/dev.db
+venv/
