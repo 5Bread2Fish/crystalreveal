@@ -23,15 +23,18 @@ export async function POST(req: NextRequest) {
         });
 
         const body = await req.json();
-        const { credits, planName, userId } = body;
+        const { credits, planName, userId, lookup_key } = body;
 
-        // 2. Logic: Find Lookup Key based on credits
-        // The frontend might send 'credits' as a number or string
-        const targetCredits = credits?.toString();
-        const targetLookupKey = LOOKUP_KEY_MAPPING[targetCredits];
+        let targetLookupKey = lookup_key;
+
+        // Fallback or validation if credits are provided but lookup_key is not
+        if (!targetLookupKey && credits) {
+            const targetCredits = credits?.toString();
+            targetLookupKey = LOOKUP_KEY_MAPPING[targetCredits];
+        }
 
         if (!targetLookupKey) {
-            console.error(`No lookup key found for credits: ${credits}`);
+            console.error(`No lookup key found. Credits: ${credits}, Provided Key: ${lookup_key}`);
             return NextResponse.json({ error: "Invalid Credit Package Selected" }, { status: 400 });
         }
 
@@ -65,7 +68,7 @@ export async function POST(req: NextRequest) {
             cancel_url: `${req.headers.get("origin")}/?canceled=true`,
             metadata: {
                 userId: userId || "",
-                credits: targetCredits,
+                credits: credits?.toString(),
                 planName: planName || "Credit Purchase",
                 type: "CREDIT_PURCHASE"
             },

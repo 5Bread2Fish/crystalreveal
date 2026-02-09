@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { Check, Sparkles, Zap, Crown, User, HelpCircle, LogOut } from "lucide-react";
@@ -7,6 +9,74 @@ import Image from "next/image";
 
 export default function PricingPage() {
     const { data: session } = useSession();
+    const [loading, setLoading] = useState(false);
+    const router = useRouter();
+
+    // Environment Check
+    const isProduction = process.env.NEXT_PUBLIC_IS_PRODUCTION === 'true';
+
+    // Stripe Payment Links (Production)
+    const STRIPE_LINKS: Record<number, string> = {
+        1: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
+        20: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
+        50: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
+        100: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03"
+    };
+
+    const handleBuyCredits = async (credits: number, planName: string) => {
+        if (!session) {
+            router.push(`/auth/signin?callbackUrl=${encodeURIComponent("/pricing")}`);
+            return;
+        }
+
+        // Production: Redirect to Stripe Payment Link
+        if (isProduction) {
+            const stripeLink = STRIPE_LINKS[credits];
+            if (stripeLink) {
+                window.location.href = stripeLink;
+            } else {
+                alert("Payment link not found for this package.");
+            }
+            return;
+        }
+
+        // Dev/Local: Stripe Checkout API
+        try {
+            setLoading(true);
+
+            // Determine lookup_key
+            let lookupKey = "";
+            switch (credits) {
+                case 1: lookupKey = "credit_payg"; break;
+                case 20: lookupKey = "credit_starter"; break;
+                case 50: lookupKey = "credit_basic"; break;
+                case 100: lookupKey = "credit_pro"; break;
+                default: lookupKey = "credit_payg";
+            }
+
+            const res = await fetch("/api/checkout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    lookup_key: lookupKey,
+                    credits,
+                    planName,
+                    userId: session.user.id
+                })
+            });
+            const data = await res.json();
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                alert("Failed to start checkout: " + (data.error || "Unknown error"));
+            }
+        } catch (e) {
+            console.error("Checkout Error", e);
+            alert("Checkout failed");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const packages = [
         {
@@ -137,12 +207,12 @@ export default function PricingPage() {
                                 </ul>
                             </div>
 
-                            <a
-                                href={pkg.link}
+                            <button
+                                onClick={() => handleBuyCredits(pkg.credits, pkg.name)}
                                 className={`w-full py-3 rounded-xl font-bold text-sm text-center transition-all ${pkg.popular ? "bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200" : "bg-gray-900 hover:bg-gray-800 text-white"}`}
                             >
                                 Buy {pkg.credits} Credits
-                            </a>
+                            </button>
                         </div>
                     ))}
                 </div>

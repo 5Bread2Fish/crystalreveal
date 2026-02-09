@@ -259,19 +259,54 @@ export default function Home() {
         }
     }, [router]);
 
+    // Environment Check
+    const isProduction = process.env.NEXT_PUBLIC_IS_PRODUCTION === 'true';
+
+    // Stripe Payment Links (Production)
+    const STRIPE_LINKS: Record<number, string> = {
+        1: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
+        20: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
+        50: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
+        100: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03"
+    };
+
     const handleBuyCredits = async (credits: number, planName: string) => {
         if (!session) {
             router.push(`/auth/signin?callbackUrl=${encodeURIComponent("/")}`);
             return;
         }
 
+        // Production: Redirect to Stripe Payment Link
+        if (isProduction) {
+            const stripeLink = STRIPE_LINKS[credits];
+            if (stripeLink) {
+                window.location.href = stripeLink;
+            } else {
+                alert("Payment link not found for this package.");
+            }
+            return;
+        }
+
+        // Dev/Local: Stripe Checkout API
         try {
             setLoading(true);
+
+            // Determine lookup_key
+            let lookupKey = "";
+            switch (credits) {
+                case 1: lookupKey = "credit_payg"; break;
+                case 20: lookupKey = "credit_starter"; break;
+                case 50: lookupKey = "credit_basic"; break;
+                case 100: lookupKey = "credit_pro"; break;
+                default: lookupKey = "credit_payg";
+            }
+
             const res = await fetch("/api/checkout", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    credits,
+                    lookup_key: lookupKey, // User requested sending lookup_key
+                    credits, // Sending credits too for backward compatibility/metadata if needed
                     planName,
                     userId: session.user.id
                 })
@@ -280,7 +315,7 @@ export default function Home() {
             if (data.url) {
                 window.location.href = data.url;
             } else {
-                alert("Failed to start checkout");
+                alert("Failed to start checkout: " + (data.error || "Unknown error"));
             }
         } catch (e) {
             console.error("Checkout Error", e);
@@ -526,7 +561,7 @@ export default function Home() {
             </nav>
 
             {/* Hero Section */}
-            <section className="relative pt-32 pb-20 overflow-hidden">
+            <section className="relative pt-48 pb-20 overflow-hidden">
                 <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-purple-100/50 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 translate-x-1/4" />
                 <div className="absolute top-20 left-10 w-[20%] h-[20%] bg-purple-200/30 rounded-full blur-[80px] pointer-events-none" />
 
@@ -798,7 +833,7 @@ export default function Home() {
                     <div>
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-900/50 border border-purple-800 text-xs font-semibold text-purple-300 mb-6">
                             <Sparkles className="w-4 h-4" />
-                            <span>Why Adopt CrystalReveal</span>
+                            <span>Why Adopt Bomee Core</span>
                         </div>
                         <h2 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">
                             Upgrade Your Output, <br />
