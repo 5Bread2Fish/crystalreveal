@@ -59,7 +59,7 @@ export default function AdminPage() {
     const fetchStats = async () => {
         setLoading(true);
         try {
-            const [statsRes, usersRes] = await Promise.all([
+            const [statsRes, usersRes, couponsRes] = await Promise.all([
                 fetch("/api/admin/stats"),
                 fetch("/api/admin/users"),
                 fetch("/api/admin/coupons")
