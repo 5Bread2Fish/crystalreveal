@@ -38,6 +38,7 @@ export const authOptions: NextAuthOptions = {
                     email: user.email,
                     userType: user.userType,
                     credits: user.credits,
+                    creditExpiresAt: user.creditExpiresAt,
                 }
             }
         })
@@ -55,6 +56,7 @@ export const authOptions: NextAuthOptions = {
                 token.id = user.id
                 token.userType = user.userType
                 token.credits = user.credits
+                token.creditExpiresAt = user.creditExpiresAt
             }
 
             // Always fetch fresh credits on token refresh/check
@@ -62,10 +64,11 @@ export const authOptions: NextAuthOptions = {
                 if (token.id) {
                     const freshUser = await prisma.user.findUnique({
                         where: { id: token.id as string },
-                        select: { credits: true }
+                        select: { credits: true, creditExpiresAt: true }
                     });
                     if (freshUser) {
                         token.credits = freshUser.credits;
+                        token.creditExpiresAt = freshUser.creditExpiresAt;
                     }
                 }
             } catch (e) {
@@ -79,6 +82,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.id = token.id as string
                 session.user.userType = token.userType as string
                 session.user.credits = token.credits as number
+                session.user.creditExpiresAt = token.creditExpiresAt as Date
             }
             return session
         }

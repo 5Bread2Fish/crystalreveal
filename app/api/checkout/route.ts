@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 
-// Create Stripe instance
-// Note: In production, always use process.env.STRIPE_SECRET_KEY
-// The user provided a truncated key, so we rely on the environment variable.
+// 1. Lookup Key Mapping Table (Constant)
+const LOOKUP_KEY_MAPPING: Record<string, string> = {
+    "1": "credit_payg",
+    "20": "credit_starter",
+    "50": "credit_basic",
+    "100": "credit_pro"
+};
+
 export async function POST(req: NextRequest) {
     try {
         const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -16,27 +21,34 @@ export async function POST(req: NextRequest) {
         });
 
         const body = await req.json();
-        const { priceId, userId } = body;
+        const { credits, planName, userId } = body;
 
-        if (!priceId) {
-            return NextResponse.json({ error: "Price ID is required" }, { status: 400 });
+        // 2. Logic: Find Lookup Key based on credits
+        // The frontend might send 'credits' as a number or string
+        const targetCredits = credits?.toString();
+        const targetLookupKey = LOOKUP_KEY_MAPPING[targetCredits];
+
+        if (!targetLookupKey) {
+            console.error(`No lookup key found for credits: ${credits}`);
+            return NextResponse.json({ error: "Invalid Credit Package Selected" }, { status: 400 });
         }
 
-        // Map Price IDs to Credits for Metadata Validation
-        const PRICE_ID_MAP: Record<string, number> = {
-            "price_1Sy5AwFC7UyjtHU9FMagFXzD": 1,
-            "price_1Sy4thFC7UyjtHU9HqyK1sT9": 20,
-            "price_1Sy518FC7UyjtHU947153HIV": 50,
-            "price_1Sy53vFC7UyjtHU9qSEPVP33": 100
-        };
+        console.log(`Mapping credits ${credits} -> lookup_key: ${targetLookupKey}`);
 
-        const credits = PRICE_ID_MAP[priceId];
+        // 3. Retrieve Price ID from Stripe
+        const prices = await stripe.prices.list({
+            lookup_keys: [targetLookupKey],
+            expand: ['data.product']
+        });
 
-        if (!credits) {
-            return NextResponse.json({ error: "Invalid Price ID" }, { status: 400 });
+        if (prices.data.length === 0) {
+            console.error(`Stripe Price not found for lookup_key: ${targetLookupKey}`);
+            return NextResponse.json({ error: "Price not found in Stripe. Please contact support." }, { status: 400 });
         }
 
-        // Create Checkout Session
+        const priceId = prices.data[0].id;
+
+        // 4. Create Checkout Session
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ["card"],
             line_items: [
@@ -50,13 +62,15 @@ export async function POST(req: NextRequest) {
             success_url: `${req.headers.get("origin")}/?success=true&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${req.headers.get("origin")}/?canceled=true`,
             metadata: {
-                userId: userId || "", // Might be empty if guest, but usually we require login to buy
-                credits: credits.toString(),
+                userId: userId || "",
+                credits: targetCredits,
+                planName: planName || "Credit Purchase",
                 type: "CREDIT_PURCHASE"
             },
         });
 
         return NextResponse.json({ sessionId: session.id, url: session.url });
+
     } catch (err: any) {
         console.error("Stripe Error:", err);
         return NextResponse.json(

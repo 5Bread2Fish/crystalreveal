@@ -386,6 +386,7 @@ export default function AdminPage() {
                                         <th className="px-6 py-3">User (Email / Business)</th>
                                         <th className="px-6 py-3">Type</th>
                                         <th className="px-6 py-3">Credits</th>
+                                        <th className="px-6 py-3">Expires</th>
                                         <th className="px-6 py-3">Stats (Gen / Tx)</th>
                                         <th className="px-6 py-3">Joined</th>
                                     </tr>
@@ -405,6 +406,9 @@ export default function AdminPage() {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-3 font-bold text-purple-600">{u.credits}</td>
+                                            <td className="px-6 py-3 text-gray-500 text-xs">
+                                                {u.creditExpiresAt ? new Date(u.creditExpiresAt).toLocaleDateString() : "-"}
+                                            </td>
                                             <td className="px-6 py-3 text-gray-600">{u.imagesCount} Gen / {u.transactionsCount} Tx</td>
                                             <td className="px-6 py-3 text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
                                         </tr>

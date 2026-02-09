@@ -16,6 +16,7 @@ function SignUpContent() {
     const [formData, setFormData] = useState({
         email: "",
         password: "",
+        confirmPassword: "",
         businessName: "",
         ownerName: "",
         countryCode: "+1",
@@ -24,6 +25,7 @@ function SignUpContent() {
         pregnancyWeeks: "",
         marketingAgreed: true,
     });
+    const [tosAgreed, setTosAgreed] = useState(false);
     const [showMarketingDetails, setShowMarketingDetails] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -161,6 +163,19 @@ function SignUpContent() {
                             value={formData.password}
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         />
+                    </div>
+                    <div>
+                        <input
+                            type="password"
+                            required
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                            placeholder="Confirm Password"
+                            value={formData.confirmPassword}
+                            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                        />
+                        {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                            <p className="text-xs text-red-500 mt-1">Passwords do not match.</p>
+                        )}
                         {formData.password && formData.password.length < 6 && (
                             <p className="text-xs text-red-500 mt-1">Password must be at least 6 characters.</p>
                         )}
@@ -243,10 +258,12 @@ function SignUpContent() {
                     )}
 
                     <div className="space-y-3 pt-2">
-                        <label className="flex items-start gap-2 text-sm text-gray-600">
+                        <label className="flex items-start gap-2 text-sm text-gray-600 cursor-pointer">
                             <input
                                 type="checkbox"
                                 required
+                                checked={tosAgreed}
+                                onChange={(e) => setTosAgreed(e.target.checked)}
                                 className="mt-1 rounded text-purple-600 focus:ring-purple-500"
                             />
                             <span>
@@ -254,7 +271,7 @@ function SignUpContent() {
                             </span>
                         </label>
 
-                        <label className="flex items-start gap-2 text-sm text-gray-600">
+                        <label className="flex items-start gap-2 text-sm text-gray-600 cursor-pointer">
                             <input
                                 type="checkbox"
                                 checked={formData.marketingAgreed}
@@ -283,8 +300,9 @@ function SignUpContent() {
 
                     <button
                         type="submit"
-                        disabled={loading || !isFormValid()}
-                        className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={loading || !isFormValid() || !tosAgreed}
+                        className={`w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:cursor-not-allowed transition-colors
+                            ${loading || !isFormValid() || !tosAgreed ? "bg-gray-400" : "bg-purple-600 hover:bg-purple-700"}`}
                     >
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign up"}
                     </button>

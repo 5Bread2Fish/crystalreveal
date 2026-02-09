@@ -16,6 +16,7 @@ model User {
   password          String
   userType          String   // INDIVIDUAL, BUSINESS
   credits           Int      @default(0)
+  creditExpiresAt   DateTime?
   businessName      String?
   ownerName         String?
   phoneNumber       String?

@@ -32,41 +32,41 @@ const packages = [
         credits: 1,
         price: 9.99,
         name: "Pay-As-You-Go",
-        description: "Just one enhancement.",
+        description: "Perfect for expectant mothers to enhance their own photos.",
         icon: Sparkles,
         features: ["1 High-Quality Image", "Instant 8K Upgrade"],
-        priceId: "price_1Sy5AwFC7UyjtHU9FMagFXzD",
+        lookupKey: "credit_payg",
         unitPrice: "$9.99/generation"
     },
     {
         credits: 20,
         price: 99,
         name: "Starter",
-        description: "Perfect for a single session.",
+        description: "Best for studios testing demand with their clients.",
         icon: Zap,
         features: ["20 High-Quality Images", "Instant 8K Upgrade"],
-        priceId: "price_1Sy4thFC7UyjtHU9HqyK1sT9",
+        lookupKey: "credit_starter",
         unitPrice: "$4.95/generation"
     },
     {
         credits: 50,
         price: 199,
         name: "Basic",
-        description: "Great for regular visits.",
+        description: "Discounted rates for growing ultrasound businesses.",
         icon: UserIcon,
         features: ["50 High-Quality Images", "Instant 8K Upgrade"],
-        priceId: "price_1Sy518FC7UyjtHU947153HIV",
+        lookupKey: "credit_basic",
         unitPrice: "$3.98/generation"
     },
     {
         credits: 100,
         price: 299,
         name: "Pro",
-        description: "Best choice for frequent users.",
+        description: "The go-to choice for high-volume 3D/4D clinics.",
         icon: Crown,
         popular: true,
         features: ["100 High-Quality Images", "Instant 8K Upgrade"],
-        priceId: "price_1Sy53vFC7UyjtHU9qSEPVP33",
+        lookupKey: "credit_pro",
         unitPrice: "$2.99/generation"
     }
 ];
@@ -259,7 +259,7 @@ export default function Home() {
         }
     }, [router]);
 
-    const handleBuyCredits = async (priceId: string) => {
+    const handleBuyCredits = async (credits: number, planName: string) => {
         if (!session) {
             router.push(`/auth/signin?callbackUrl=${encodeURIComponent("/")}`);
             return;
@@ -271,7 +271,8 @@ export default function Home() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    priceId,
+                    credits,
+                    planName,
                     userId: session.user.id
                 })
             });
@@ -797,7 +798,7 @@ export default function Home() {
                     <div>
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-900/50 border border-purple-800 text-xs font-semibold text-purple-300 mb-6">
                             <Sparkles className="w-4 h-4" />
-                            <span>Clinical Advantage</span>
+                            <span>Why Adopt CrystalReveal</span>
                         </div>
                         <h2 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">
                             Upgrade Your Output, <br />
@@ -813,7 +814,7 @@ export default function Home() {
                                     <span className="text-2xl">💎</span>
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-white text-lg">Medical-Grade Clarity</h4>
+                                    <h4 className="font-bold text-white text-lg">Premium Equipment Clarity</h4>
                                     <p className="text-gray-400 text-sm">Deliver crystal-clear images that rival the latest high-end systems.</p>
                                 </div>
                             </div>
@@ -829,10 +830,10 @@ export default function Home() {
                         </div>
                     </div>
                     <div className="relative h-[400px] md:h-[500px] rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-                        <Image src="/comparison-demo.jpg" alt="Clear Difference" fill className="object-cover opacity-80" />
+                        <Image src="/bomee_studio_session.png" alt="Clear Difference" fill className="object-cover opacity-80" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-8">
                             <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/10 w-full">
-                                <p className="text-white font-medium">"My clients are amazed. It looks like I bought a $200k machine."</p>
+                                <p className="text-white font-medium">"My clients are amazed. It looks like I bought a $100k machine."</p>
                                 <p className="text-purple-300 text-sm mt-2">- Sarah J., Studio Owner</p>
                             </div>
                         </div>
@@ -888,7 +889,7 @@ export default function Home() {
                                 </div>
 
                                 <button
-                                    onClick={() => handleBuyCredits(pkg.priceId)}
+                                    onClick={() => handleBuyCredits(pkg.credits, pkg.name)}
                                     disabled={loading}
                                     className={`w-full py-3 rounded-xl font-bold text-sm text-center transition-all ${pkg.popular ? "bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200" : "bg-gray-900 hover:bg-gray-800 text-white"} disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
@@ -975,66 +976,72 @@ export default function Home() {
                 </section>
             )}
 
-            {/* Bomee Enterprise Section - Now "Ditch USBs" focused */}
-            <section className="bg-purple-600 py-24 text-white relative overflow-hidden">
-                {/* Background Pattern */}
-                <div className="absolute inset-0 opacity-10">
-                    <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-500/20 rounded-full blur-[100px]" />
+            {/* Revenue / Upgrade Section (Moved from Owner Section) */}
+            <section className="bg-gradient-to-br from-gray-900 to-black py-24 text-white relative overflow-hidden">
+                <div className="absolute inset-0 opacity-20">
+                    <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-600/30 rounded-full blur-[100px]" />
                 </div>
 
-                <div className="max-w-7xl mx-auto px-6 relative z-10 grid lg:grid-cols-2 gap-16 items-center">
+                <div className="max-w-7xl mx-auto px-6 relative z-10 grid lg:grid-cols-2 gap-12 items-center">
                     <div>
-                        <h2 className="text-3xl md:text-5xl font-bold mb-6 text-white leading-tight">
-                            Are You an Ultrasound <br /> Studio Owner?
-                        </h2>
-                        <p className="text-xl text-purple-100 mb-8">
-                            Modernize your client experience with our Seamless Cloud Integration.
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-900/50 border border-purple-800 text-xs font-semibold text-purple-300 mb-6">
+                            <Sparkles className="w-4 h-4" />
+                            <span>Why Adopt Bomee Core</span>
+                        </div>
+                        <h2 className="text-4xl font-extrabold mb-6">Elevate Your Ultrasound Business with Bomee Core</h2>
+                        <p className="text-xl text-gray-300 mb-8 max-w-lg">
+                            An essential companion to CrystalReveal.
+                            <br /><br />
+                            Already trusted by hundreds of top-tier US studios and clinics, Bomee Core is the engine that powers your digital workflow and client loyalty.
                         </p>
-
-                        <div className="space-y-6 mb-8">
+                        <div className="space-y-4 mb-8">
                             <div className="flex gap-4">
-                                <span className="text-2xl">🔌</span>
+                                <div className="w-12 h-12 rounded-xl bg-purple-900/50 flex items-center justify-center flex-shrink-0">
+                                    <Zap className="w-6 h-6 text-purple-400" />
+                                </div>
                                 <div>
-                                    <strong className="block text-white text-lg">Universal Compatibility</strong>
-                                    <span className="text-purple-200">Works flawlessly with your existing ultrasound machines (GE, Samsung, Mindray, etc.).</span>
+                                    <h3 className="font-bold text-lg">Effortless Digital Delivery</h3>
+                                    <p className="text-gray-400 text-sm">Replace outdated USBs with instant cloud syncing. Compatible with all major hardware (GE, Samsung, Mindray).</p>
                                 </div>
                             </div>
                             <div className="flex gap-4">
-                                <span className="text-2xl">📱</span>
+                                <div className="w-12 h-12 rounded-xl bg-blue-900/50 flex items-center justify-center flex-shrink-0">
+                                    <Crown className="w-6 h-6 text-blue-400" />
+                                </div>
                                 <div>
-                                    <strong className="block text-white text-lg">Instant Delivery</strong>
-                                    <span className="text-purple-200">Parents receive their photos via SMS/Email instantly. No more USB drives.</span>
+                                    <h3 className="font-bold text-lg">Exclusive Premium Access</h3>
+                                    <p className="text-gray-400 text-sm">Offer your clients a high-end alternative to paid apps like Flo. Your partnership grants them free access to our premium maternity suite, AI-driven health insights, and community features.</p>
                                 </div>
                             </div>
                             <div className="flex gap-4">
-                                <span className="text-2xl">🧠</span>
+                                <div className="w-12 h-12 rounded-xl bg-green-900/50 flex items-center justify-center flex-shrink-0">
+                                    <UserIcon className="w-6 h-6 text-green-400" />
+                                </div>
                                 <div>
-                                    <strong className="block text-white text-lg">Bomee Core Solution</strong>
-                                    <span className="text-purple-200">Provide personalized pregnancy info & AI counseling directly via our premium app.</span>
+                                    <h3 className="font-bold text-lg">The Ultimate Retention Engine</h3>
+                                    <p className="text-gray-400 text-sm">Our smart notifications act as your personal marketing team, reminding clients to book their next Gender Reveal or 4D appointment directly through your portal.</p>
                                 </div>
                             </div>
                         </div>
 
-                        <Link href="https://www.bomee.io/?lb=contact" target="_blank" className="inline-flex items-center gap-2 bg-white text-purple-600 px-8 py-4 rounded-xl font-bold hover:bg-purple-50 transition-colors shadow-lg">
-                            <span>Partner Consultation</span>
+                        <Link
+                            href="https://www.bomee.io/?lb=contact"
+                            target="_blank"
+                            className="inline-flex items-center gap-2 bg-purple-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-purple-700 transition-colors shadow-lg shadow-purple-900/20"
+                        >
+                            <span>Book a Free Consultation</span>
                             <ArrowRight className="w-5 h-5" />
                         </Link>
                     </div>
-
-                    <div className="relative">
-                        {/* Manufacturer Marquee - Vertical or just a block */}
-                        <div className="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20">
-                            <p className="text-white font-bold mb-6 text-center uppercase tracking-widest text-sm opacity-80">Trusted Compatibility</p>
-                            <div className="flex flex-wrap justify-center gap-4 text-center">
-                                <span className="bg-white/10 px-4 py-2 rounded-lg text-sm font-medium">GE HealthCare</span>
-                                <span className="bg-white/10 px-4 py-2 rounded-lg text-sm font-medium">Samsung Medison</span>
-                                <span className="bg-white/10 px-4 py-2 rounded-lg text-sm font-medium">Philips</span>
-                                <span className="bg-white/10 px-4 py-2 rounded-lg text-sm font-medium">Siemens</span>
-                                <span className="bg-white/10 px-4 py-2 rounded-lg text-sm font-medium">Canon Medical</span>
-                                <span className="bg-white/10 px-4 py-2 rounded-lg text-sm font-medium">Mindray</span>
-                                <span className="bg-white/10 px-4 py-2 rounded-lg text-sm font-medium">SonoScape</span>
-                            </div>
-                        </div>
+                    <div className="relative h-[600px] w-full hidden lg:block animate-in fade-in slide-in-from-right duration-1000">
+                        {/* Glow Effect behind phones */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-purple-500/20 rounded-full blur-[80px]" />
+                        <Image
+                            src="/bomee_core_mockup_v2.png"
+                            alt="Bomee Core App Interface"
+                            fill
+                            className="object-contain drop-shadow-2xl"
+                        />
                     </div>
                 </div>
             </section>

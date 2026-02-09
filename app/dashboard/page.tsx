@@ -109,6 +109,9 @@ function OverviewTab({ session, setActiveTab }: { session: any, setActiveTab: (t
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                     <div className="text-sm text-gray-500 font-medium mb-1">Available Credits</div>
                     <div className="text-3xl font-bold text-purple-600">{session.user.credits}</div>
+                    {session.user.creditExpiresAt && (
+                        <p className="text-xs text-gray-400 mt-1">Expires on {new Date(session.user.creditExpiresAt).toLocaleDateString()}</p>
+                    )}
                     <Link href="/pricing" className="mt-4 block text-sm text-purple-600 font-semibold hover:underline">Get more credits →</Link>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
@@ -223,6 +226,9 @@ function BillingTab({ session }: { session: any }) {
                     <div>
                         <div className="text-4xl font-extrabold text-gray-900">{session.user.credits}</div>
                         <p className="text-gray-500">Available Credits</p>
+                        {session.user.creditExpiresAt && (
+                            <p className="text-sm text-gray-400 mt-1">Expires on {new Date(session.user.creditExpiresAt).toLocaleDateString()}</p>
+                        )}
                     </div>
                     <Link href="/pricing" className="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-purple-700 transition-colors shadow-lg shadow-purple-200">
                         Buy More Credits

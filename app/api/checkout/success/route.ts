@@ -70,7 +70,10 @@ export async function POST(req: Request) {
             }),
             prisma.user.update({
                 where: { id: userId },
-                data: { credits: { increment: credits } }
+                data: {
+                    credits: { increment: credits },
+                    creditExpiresAt: new Date(new Date().setFullYear(new Date().getFullYear() + 1)) // 1 Year Validity
+                }
             })
         ]);
 
