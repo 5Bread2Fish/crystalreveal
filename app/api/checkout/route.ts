@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 
+export const dynamic = 'force-dynamic';
+
 // 1. Lookup Key Mapping Table (Constant)
 const LOOKUP_KEY_MAPPING: Record<string, string> = {
     "1": "credit_payg",
