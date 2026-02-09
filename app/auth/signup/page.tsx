@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Loader2, Building, User } from "lucide-react";
 import { signIn } from "next-auth/react";
 
-export default function SignUp() {
+function SignUpContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
@@ -291,5 +291,13 @@ export default function SignUp() {
                 </form>
             </div>
         </div>
+    );
+}
+
+export default function SignUp() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-purple-600" /></div>}>
+            <SignUpContent />
+        </Suspense>
     );
 }

@@ -39,7 +39,7 @@ export async function POST(req: Request) {
         const amountSubtotal = (stripeSession.amount_subtotal || 0) / 100;
         const discountAmount = amountSubtotal - amountTotal;
         const discountDetails = stripeSession.total_details?.breakdown?.discounts || [];
-        const couponCode = discountDetails.length > 0 ? discountDetails[0].discount.coupon.name || "PROMO" : null;
+        const couponCode = discountDetails.length > 0 ? (discountDetails[0].discount as any).coupon.name || "PROMO" : null;
 
         if (type !== "CREDIT_PURCHASE" || credits <= 0 || !userId) {
             return NextResponse.json({ success: true, message: "Ignored non-credit purchase" });
