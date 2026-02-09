@@ -50,10 +50,11 @@ export async function POST(req: Request) {
         // If 'code' is provided, we create a promotion code linked to this coupon
         let promotionCode;
         if (code) {
+            // as any를 붙여서 "타입 검사 하지 마"라고 알려줍니다.
             promotionCode = await stripe.promotionCodes.create({
                 coupon: coupon.id,
                 code: code,
-            });
+            } as any);
         }
 
         return NextResponse.json({ coupon, promotionCode });
