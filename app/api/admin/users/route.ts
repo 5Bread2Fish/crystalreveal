@@ -1,40 +1,74 @@
-
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-export const dynamic = 'force-dynamic'; // Ensure dynamic rendering
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
-        const users = await prisma.user.findMany({
-            orderBy: {
-                createdAt: "desc"
-            },
-            include: {
-                _count: {
-                    select: {
-                        images: true,
-                        transactions: true
-                    }
-                }
+        const { searchParams } = new URL(req.url);
+        const search = searchParams.get("search") || "";
+        const value = searchParams.get("value") || "";
+        const page = parseInt(searchParams.get("page") || "1");
+        const limit = parseInt(searchParams.get("limit") || "50");
+
+        const skip = (page - 1) * limit;
+
+        // Build where clause
+        let where: any = {};
+        if (search && value) {
+            switch (search) {
+                case "email":
+                    where.email = {
+                        contains: value,
+                        mode: "insensitive"
+                    };
+                    break;
+                case "userType":
+                    where.userType = value;
+                    break;
+                case "businessName":
+                    where.businessName = {
+                        contains: value,
+                        mode: "insensitive"
+                    };
+                    break;
+            }
+        }
+
+        const [users, total] = await Promise.all([
+            prisma.user.findMany({
+                where,
+                select: {
+                    id: true,
+                    email: true,
+                    userType: true,
+                    businessName: true,
+                    credits: true,
+                    creditExpiresAt: true,
+                    createdAt: true,
+                    website: true,
+                    phoneNumber: true
+                },
+                orderBy: {
+                    createdAt: "desc"
+                },
+                skip,
+                take: limit
+            }),
+            prisma.user.count({ where })
+        ]);
+
+        return NextResponse.json({
+            users,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
             }
         });
-
-        // Safe user object (omit password)
-        const safeUsers = users.map((user: any) => ({
-            id: user.id,
-            email: user.email,
-            userType: user.userType,
-            credits: user.credits,
-            businessName: user.businessName,
-            createdAt: user.createdAt,
-            imagesCount: user._count.images,
-            transactionsCount: user._count.transactions
-        }));
-
-        return NextResponse.json({ users: safeUsers });
     } catch (error) {
-        console.error("Error fetching users:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        console.error("Admin users error:", error);
+        return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
     }
 }
