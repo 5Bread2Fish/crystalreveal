@@ -2,13 +2,16 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { User, CreditCard, Image as ImageIcon, Settings, LogOut, Loader2, Download, ExternalLink, HelpCircle, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function Dashboard() {
+// Force dynamic rendering to fix build error
+export const dynamic = 'force-dynamic';
+
+function DashboardContent() {
     const { data: session, status } = useSession();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -483,5 +486,18 @@ function SettingsTab({ session }: { session: any }) {
                 </div>
             </form>
         </div>
+    );
+}
+
+// Wrapper component with Suspense
+export default function Dashboard() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+            </div>
+        }>
+            <DashboardContent />
+        </Suspense>
     );
 }
