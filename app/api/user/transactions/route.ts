@@ -7,14 +7,23 @@ import prisma from "@/lib/prisma";
 export async function GET() {
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
+    if (!session || !session.user?.email) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     try {
+        // Get user from database using email
+        const user = await prisma.user.findUnique({
+            where: { email: session.user.email }
+        });
+
+        if (!user) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
         const transactions = await prisma.creditTransaction.findMany({
             where: {
-                userId: session.user.id
+                userId: user.id
             },
             orderBy: {
                 createdAt: "desc"

@@ -1,17 +1,19 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { User, CreditCard, Image as ImageIcon, Settings, LogOut, Loader2, Download, ExternalLink, HelpCircle } from "lucide-react";
+import { User, CreditCard, Image as ImageIcon, Settings, LogOut, Loader2, Download, ExternalLink, HelpCircle, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
     const { data: session, status } = useSession();
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<"overview" | "gallery" | "billing" | "settings">("overview");
+    const searchParams = useSearchParams();
+    const tabFromUrl = searchParams.get("tab") as "overview" | "gallery" | "billing" | "settings" | null;
+    const [activeTab, setActiveTab] = useState<"overview" | "gallery" | "billing" | "settings">(tabFromUrl || "overview");
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -100,6 +102,8 @@ export default function Dashboard() {
     );
 }
 
+
+
 function OverviewTab({ session, setActiveTab }: { session: any, setActiveTab: (tab: any) => void }) {
     return (
         <div className="space-y-6">
@@ -116,8 +120,8 @@ function OverviewTab({ session, setActiveTab }: { session: any, setActiveTab: (t
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                     <div className="text-sm text-gray-500 font-medium mb-1">Images Generated</div>
-                    <div className="text-3xl font-bold text-gray-900">0</div> {/* Placeholder: Fetch actual count */}
-                    <button onClick={() => setActiveTab("gallery")} className="mt-4 block text-sm text-gray-600 font-semibold hover:underline">View Gallery →</button>
+                    <div className="text-3xl font-bold text-gray-900">View All</div>
+                    <button onClick={() => setActiveTab("gallery")} className="mt-4 block text-sm text-gray-600 font-semibold hover:underline">Go to Gallery →</button>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                     <div className="text-sm text-gray-500 font-medium mb-1">Account Type</div>
@@ -146,6 +150,7 @@ function OverviewTab({ session, setActiveTab }: { session: any, setActiveTab: (t
 function GalleryTab() {
     const [images, setImages] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const router = useRouter();
 
     useEffect(() => {
         fetch("/api/user/gallery")
@@ -155,6 +160,10 @@ function GalleryTab() {
             })
             .finally(() => setLoading(false));
     }, []);
+
+    const handleUnlock = async (imageId: string) => {
+        router.push(`/checkout?imageId=${imageId}`);
+    };
 
     if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-gray-300" /></div>;
 
@@ -176,29 +185,76 @@ function GalleryTab() {
             <h2 className="text-2xl font-bold text-gray-900">My Gallery</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {images.map((img) => (
-                    <div key={img.id} className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow group">
-                        <div className="relative aspect-square bg-gray-100">
+                    <div key={img.id} className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow group flex flex-col">
+                        {/* Image Area */}
+                        <div className="relative aspect-square bg-gray-100 group">
+                            {/* LOCKED OVERLAY */}
+                            {!img.unlocked && (
+                                <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center">
+                                    <Lock className="w-8 h-8 text-white mb-2 opacity-80" />
+                                    <p className="text-white font-bold mb-1">Locked</p>
+                                    <p className="text-white/70 text-xs mb-4">Unlock to view high-res & download</p>
+                                    <button
+                                        onClick={() => handleUnlock(img.id)}
+                                        className="bg-white text-gray-900 px-4 py-2 rounded-full text-sm font-bold hover:bg-gray-100 transition-colors shadow-lg"
+                                    >
+                                        Unlock Image
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Image Display */}
                             {img.advancedUrl ? (
-                                <Image src={img.advancedUrl} alt="Generated" fill className="object-cover" />
+                                <Image
+                                    src={img.advancedUrl}
+                                    alt="Generated"
+                                    fill
+                                    className={cn("object-cover transition-transform duration-500 group-hover:scale-105", !img.unlocked && "blur-md scale-105")}
+                                />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-gray-400">Processing...</div>
                             )}
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                <a href={img.advancedUrl} download target="_blank" className="p-2 bg-white rounded-full text-gray-900 hover:text-purple-600 transition-colors">
-                                    <Download className="w-5 h-5" />
-                                </a>
-                                <a href={img.originalUrl} target="_blank" className="p-2 bg-white rounded-full text-gray-900 hover:text-purple-600 transition-colors" title="View Original">
-                                    <ExternalLink className="w-5 h-5" />
-                                </a>
-                            </div>
+
+                            {/* Actions Overlay (Only if Unlocked) */}
+                            {img.unlocked && (
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10">
+                                    <a href={img.advancedUrl} download target="_blank" className="p-2 bg-white rounded-full text-gray-900 hover:text-purple-600 transition-colors" title="Download Advanced">
+                                        <Download className="w-5 h-5" />
+                                    </a>
+                                    <a href={img.originalUrl} target="_blank" className="p-2 bg-white rounded-full text-gray-900 hover:text-purple-600 transition-colors" title="View Original">
+                                        <ExternalLink className="w-5 h-5" />
+                                    </a>
+                                </div>
+                            )}
                         </div>
-                        <div className="p-4">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-sm font-medium text-gray-900">{new Date(img.createdAt).toLocaleDateString()}</span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${img.isUnlocked ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
-                                    {img.isUnlocked ? "Unlocked" : "Locked"}
-                                </span>
+
+                        {/* Info Area */}
+                        <div className="p-4 flex-1 flex flex-col justify-between">
+                            <div>
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="text-sm font-medium text-gray-900">{new Date(img.createdAt).toLocaleDateString()}</span>
+                                    <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", img.unlocked ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600")}>
+                                        {img.unlocked ? "Unlocked" : "Locked"}
+                                    </span>
+                                </div>
+
+                                {/* Versions Access */}
+                                {img.unlocked && (
+                                    <div className="flex gap-2 mt-3 text-xs">
+                                        <a href={img.originalUrl} target="_blank" className="hover:text-purple-600 underline text-gray-500">Original</a>
+                                        <span className="text-gray-300">|</span>
+                                        <a href={img.basicUrl} target="_blank" className="hover:text-purple-600 underline text-gray-500">Basic</a>
+                                        <span className="text-gray-300">|</span>
+                                        <a href={img.advancedUrl} target="_blank" className="hover:text-purple-600 underline text-purple-600 font-medium">Advanced</a>
+                                    </div>
+                                )}
                             </div>
+
+                            {img.unlocked && img.unlockedAt && (
+                                <div className="mt-3 pt-3 border-t border-gray-100/50">
+                                    <p className="text-[10px] text-gray-400">Unlocked on {new Date(img.unlockedAt).toLocaleDateString()}</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -253,7 +309,7 @@ function BillingTab({ session }: { session: any }) {
                                 <tr key={tx.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4 text-gray-600">{new Date(tx.createdAt).toLocaleDateString()}</td>
                                     <td className="px-6 py-4 font-medium text-gray-900">{tx.transactionType === 'CHARGE' ? 'Credit Purchase' : 'Image Unlock'}</td>
-                                    <td className="px-6 py-4 text-gray-600">{tx.amountPaid ? `$${tx.amountPaid}` : '-'}</td>
+                                    <td className="px-6 py-4 text-gray-600">{tx.amountPaid ? `$${Number(tx.amountPaid).toFixed(2)}` : '-'}</td>
                                     <td className={cn("px-6 py-4 font-bold text-right", tx.creditsChange > 0 ? "text-green-600" : "text-gray-900")}>
                                         {tx.creditsChange > 0 ? "+" : ""}{tx.creditsChange}
                                     </td>
@@ -272,14 +328,61 @@ function BillingTab({ session }: { session: any }) {
 }
 
 function SettingsTab({ session }: { session: any }) {
+    const [formData, setFormData] = useState({
+        businessName: session.user.businessName || "",
+        phoneNumber: session.user.phoneNumber || "",
+        website: session.user.website || "",
+        pregnancyWeeks: session.user.pregnancyWeeks || "",
+        monthlyScanVolume: session.user.monthlyScanVolume || "",
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const [message, setMessage] = useState({ type: "", text: "" });
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        setMessage({ type: "", text: "" });
+
+        try {
+            const res = await fetch("/api/user/settings", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData),
+            });
+
+            if (res.ok) {
+                setMessage({ type: "success", text: "Profile updated successfully!" });
+                // Note: Session update requires page reload or complicated re-fetch logic usually, 
+                // but local state is fine for now.
+            } else {
+                setMessage({ type: "error", text: "Failed to update profile." });
+            }
+        } catch (error) {
+            setMessage({ type: "error", text: "An error occurred." });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     return (
-        <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm max-w-2xl">
+        <div className="max-w-2xl bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Account Settings</h2>
 
-            <div className="space-y-6">
+            {message.text && (
+                <div className={cn("p-4 mb-6 rounded-xl text-sm font-medium", message.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>
+                    {message.text}
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                     <input type="text" value={session.user.email} disabled className="w-full px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 cursor-not-allowed" />
+                    <p className="text-xs text-gray-400 mt-1">Email cannot be changed.</p>
                 </div>
 
                 <div>
@@ -287,11 +390,98 @@ function SettingsTab({ session }: { session: any }) {
                     <input type="text" value={session.user.userType || "Individual"} disabled className="w-full px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-500 capitalize cursor-not-allowed" />
                 </div>
 
-                <div className="pt-6 border-t border-gray-100">
-                    <button className="text-red-600 font-medium hover:text-red-700 text-sm">Delete Account</button>
-                    <p className="text-xs text-gray-400 mt-1">Permanently delete your account and all data.</p>
+                <div className="pt-4 border-t border-gray-100">
+                    <h3 className="font-semibold text-gray-900 mb-4">Profile Information</h3>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Business Name (Optional)</label>
+                            <input
+                                type="text"
+                                name="businessName"
+                                value={formData.businessName}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 rounded-xl bg-white border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-shadow"
+                                placeholder="Enter your studio or business name"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                            <input
+                                type="tel"
+                                name="phoneNumber"
+                                value={formData.phoneNumber}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 rounded-xl bg-white border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-shadow"
+                                placeholder="+1 (555) 000-0000"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                            <input
+                                type="url"
+                                name="website"
+                                value={formData.website}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 rounded-xl bg-white border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-shadow"
+                                placeholder="https://example.com"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Current Pregnancy Weeks</label>
+                            <input
+                                type="text"
+                                name="pregnancyWeeks"
+                                value={formData.pregnancyWeeks}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 rounded-xl bg-white border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-shadow"
+                                placeholder="e.g. 24 Weeks"
+                            />
+                        </div>
+
+                        {/* Only for Business Users usually, but let's keep it visible for flexibility as per request "everything visible" */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Scan Volume (Estimate)</label>
+                            <select
+                                name="monthlyScanVolume"
+                                value={formData.monthlyScanVolume}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2 rounded-xl bg-white border border-gray-200 focus:ring-2 focus:ring-purple-500 outline-none transition-shadow"
+                            >
+                                <option value="">Select average elective ultrasound scans per month</option>
+                                <option value="0-10">0-10 Scans / Month</option>
+                                <option value="11-20">11-20 Scans / Month</option>
+                                <option value="21-30">21-30 Scans / Month</option>
+                                <option value="31-40">31-40 Scans / Month</option>
+                                <option value="41-50">41-50 Scans / Month</option>
+                                <option value="51-60">51-60 Scans / Month</option>
+                                <option value="61-70">61-70 Scans / Month</option>
+                                <option value="71-80">71-80 Scans / Month</option>
+                                <option value="81-90">81-90 Scans / Month</option>
+                                <option value="91-100">91-100 Scans / Month</option>
+                                <option value="100+">100+ Scans / Month</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-            </div>
+
+                <div className="pt-6 border-t border-gray-100 flex items-center justify-between">
+                    <div>
+                        <button type="button" className="text-red-600 font-medium hover:text-red-700 text-sm">Delete Account</button>
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={isSaving}
+                        className="bg-gray-900 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center gap-2"
+                    >
+                        {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                        Save Changes
+                    </button>
+                </div>
+            </form>
         </div>
     );
 }

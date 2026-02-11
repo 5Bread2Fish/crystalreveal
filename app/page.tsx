@@ -2,7 +2,7 @@
 
 import { useState, useRef, DragEvent, useEffect } from "react";
 import Image from "next/image";
-import { Upload, Download, Loader2, Sparkles, ExternalLink, ArrowRight, CreditCard, Lock, RefreshCcw, Maximize2, X, Timer, User as UserIcon, LogOut, HelpCircle, Check, Zap, Crown } from "lucide-react";
+import { Upload, Sparkles, Lock, Maximize2, X, ChevronLeft, ChevronRight, Zap, Users, TrendingUp, Star, Check, Download, Loader2, User as UserIcon, LogOut, HelpCircle, Crown, Timer, RefreshCcw, ArrowRight, CreditCard, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { upload } from "@vercel/blob/client";
@@ -93,6 +93,7 @@ export default function Home() {
 
     // Unlock Error State
     const [unlockError, setUnlockError] = useState("");
+    const [creditUsedNotification, setCreditUsedNotification] = useState(false);
 
     // Load global gallery on mount
     useEffect(() => {
@@ -109,6 +110,38 @@ export default function Home() {
         };
         fetchGallery();
     }, []);
+
+    // Guest Session ID Management
+    const [guestSessionId, setGuestSessionId] = useState<string | null>(null);
+
+    useEffect(() => {
+        // Get or create guest session ID
+        let sessionId = localStorage.getItem("bomee_guest_session");
+        if (!sessionId) {
+            sessionId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            localStorage.setItem("bomee_guest_session", sessionId);
+        }
+        setGuestSessionId(sessionId);
+    }, []);
+
+    // Migrate guest images to user account after login
+    useEffect(() => {
+        if (status === "authenticated" && session?.user && guestSessionId) {
+            // Call migration API
+            fetch("/api/user/migrate-images", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ guestSessionId })
+            }).then(res => res.json()).then(data => {
+                if (data.success && data.migratedCount > 0) {
+                    console.log(`Migrated ${data.migratedCount} images to user account`);
+                    // Clear guest session ID since images are now migrated
+                    localStorage.removeItem("bomee_guest_session");
+                    setGuestSessionId(null);
+                }
+            }).catch(e => console.error("Migration failed:", e));
+        }
+    }, [status, session, guestSessionId]);
 
     const handleDrag = (e: DragEvent) => {
         e.preventDefault();
@@ -172,6 +205,11 @@ export default function Home() {
 
         const formData = new FormData();
         formData.append("file", file);
+
+        // Add guest session ID if not logged in
+        if (!session && guestSessionId) {
+            formData.append("guestSessionId", guestSessionId);
+        }
 
         try {
             const res = await fetch("/api/generate", {
@@ -330,6 +368,7 @@ export default function Home() {
         if (!generatedImages?.id) return;
 
         setUnlockError(""); // Clear previous errors
+        setCreditUsedNotification(false); // Clear previous notification
 
         if (!session) {
             // Guest Flow: Save to LocalStorage and redirect to Signup
@@ -350,11 +389,7 @@ export default function Home() {
             return;
         }
 
-        // Optional: You could still keep a confirm if you want, or remove it for "instant" feel.
-        // User requested removing popup for "insufficient credits", but confirm for spending might be okay?
-        // Let's keep the spending confirm but make it less intrusive if possible, or just standard confirm.
-        if (!confirm(`Unlock this result for 1 Credit? (Balance: ${credits})`)) return;
-
+        // Remove popup confirmation - unlock immediately
         try {
             setLoading(true);
             const res = await fetch("/api/images/unlock", {
@@ -365,7 +400,11 @@ export default function Home() {
             const data = await res.json();
             if (res.ok && data.success) {
                 setGeneratedImages(prev => prev ? { ...prev, isUnlocked: true } : null);
+                setCreditUsedNotification(true); // Show inline notification
                 router.refresh();
+
+                // Auto-hide notification after 3 seconds
+                setTimeout(() => setCreditUsedNotification(false), 3000);
             } else {
                 if (res.status === 402) {
                     setUnlockError("Insufficient credits.");
@@ -530,7 +569,7 @@ export default function Home() {
                             <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
                         ) : session ? (
                             <div className="flex items-center gap-4">
-                                <Link href="#pricing" className="text-sm font-medium text-purple-600 bg-purple-50 px-3 py-1.5 rounded-full border border-purple-100 hover:bg-purple-100 transition-colors">
+                                <Link href="/dashboard?tab=billing" className="text-sm font-medium text-purple-600 bg-purple-50 px-3 py-1.5 rounded-full border border-purple-100 hover:bg-purple-100 transition-colors">
                                     {session.user.credits} Credits
                                 </Link>
                                 <div className="relative group">
@@ -801,22 +840,58 @@ export default function Home() {
                                     </button>
                                     <button
                                         onClick={handleUnlock}
-                                        className="flex-[1.5] py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-md shadow-purple-200 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02]"
+                                        disabled={loading}
+                                        className="flex-[1.5] py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-md shadow-purple-200 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <Lock className="w-5 h-5" />
                                         <span>Unlock Result (1 Credit)</span>
                                     </button>
                                 </div>
+
+                                {/* Credit Used Notification */}
+                                {creditUsedNotification && (
+                                    <div className="mt-3 text-center bg-green-50 text-green-700 text-sm py-2 px-4 rounded-lg border border-green-200 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-1">
+                                        <span className="font-semibold">✓ 1 Credit Used</span>
+                                    </div>
+                                )}
+
                                 {unlockError && (
-                                    <div className="mt-3 text-center bg-red-50 text-red-600 text-sm py-2 px-4 rounded-lg border border-red-100 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-1">
-                                        <span>{unlockError}</span>
+                                    <div className="mt-3 text-center bg-red-50 text-red-600 text-sm py-3 px-4 rounded-lg border border-red-100 animate-in fade-in slide-in-from-top-1">
+                                        <p className="font-semibold mb-2">{unlockError}</p>
                                         {unlockError.includes("credits") && (
-                                            <Link href="#pricing" className="font-bold underline hover:text-red-700">
-                                                Buy Credits
-                                            </Link>
+                                            <a
+                                                href="#pricing"
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                                            >
+                                                <CreditCard className="w-4 h-4" />
+                                                Go to Pricing
+                                            </a>
                                         )}
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {/* Download Button (After Unlock) */}
+                        {generatedImages && generatedImages.isUnlocked && (
+                            <div className="mt-8 w-full max-w-lg mx-auto">
+                                <div className="flex gap-3 p-2 bg-white rounded-2xl border border-gray-100 shadow-xl shadow-purple-900/5">
+                                    <button
+                                        onClick={() => setIsCompareMode(true)}
+                                        className="flex-1 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-semibold border border-gray-200 flex items-center justify-center gap-2 transition-all hover:border-gray-300"
+                                    >
+                                        <Maximize2 className="w-4 h-4" />
+                                        <span className="text-sm">Compare</span>
+                                    </button>
+                                    <a
+                                        href={generatedImages.advanced}
+                                        download="bomee-crystalreveal-advanced.png"
+                                        className="flex-[1.5] py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-bold shadow-md shadow-green-200 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02]"
+                                    >
+                                        <Download className="w-5 h-5" />
+                                        <span>Download</span>
+                                    </a>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -833,7 +908,7 @@ export default function Home() {
                     <div>
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-900/50 border border-purple-800 text-xs font-semibold text-purple-300 mb-6">
                             <Sparkles className="w-4 h-4" />
-                            <span>Why Adopt Bomee Core</span>
+                            <span>Why Adopt CrystalReveal</span>
                         </div>
                         <h2 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">
                             Upgrade Your Output, <br />

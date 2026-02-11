@@ -20,6 +20,9 @@ export async function POST(req: NextRequest) {
         // Check Session
         const session = await getServerSession(authOptions);
 
+        // Get guest session ID if provided
+        const guestSessionId = formData.get("guestSessionId") as string | null;
+
         // API Key (AI Studio)
         const apiKey = process.env.GOOGLE_API_KEY || "AIzaSyAF9koxXcFabzhYTK9SE9N7guDtgHF86Ms";
 
@@ -167,11 +170,13 @@ export async function POST(req: NextRequest) {
                 data: {
                     id: requestId,
                     userId: session?.user?.id || null,
-                    sessionId: session?.user?.id ? null : requestId, // For guest, use requestId as session identifier for now
+                    sessionId: session?.user?.id ? null : (guestSessionId || requestId), // Use provided guestSessionId or fallback to requestId
                     originalUrl: originalBlob.url,
                     basicUrl: basicBlob.url,
                     advancedUrl: advancedBlob.url,
-                    isUnlocked: false,
+                    unlocked: false,
+                    ip: ip,
+                    country: country,
                 }
             });
         } catch (e) {

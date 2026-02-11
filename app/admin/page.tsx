@@ -28,7 +28,7 @@ export default function AdminPage() {
     const [settings, setSettings] = useState<{ autoPublish: boolean }>({ autoPublish: true });
 
     // New State for Users & Coupons
-    const [viewMode, setViewMode] = useState<"logs" | "users" | "coupons">("logs");
+    const [viewMode, setViewMode] = useState<"logs" | "users" | "coupons" | "user_detail">("logs");
     const [users, setUsers] = useState<any[]>([]);
     const [coupons, setCoupons] = useState<any[]>([]);
 
@@ -269,6 +269,34 @@ export default function AdminPage() {
         }
     };
 
+    // Detail View State
+    const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+    const [userDetail, setUserDetail] = useState<any>(null);
+
+    const fetchUserDetails = async (id: string) => {
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/admin/users/${id}`);
+            const data = await res.json();
+            if (data.user) {
+                setUserDetail(data);
+                setSelectedUserId(id);
+                setViewMode("user_detail");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Failed to fetch user details");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const closeDetailView = () => {
+        setSelectedUserId(null);
+        setUserDetail(null);
+        setViewMode("users");
+    };
+
     if (!isAuthenticated) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col gap-4">
@@ -311,25 +339,29 @@ export default function AdminPage() {
                         <Link href="/" className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
                             Back to App
                         </Link>
-                        <button onClick={exportCSV} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center gap-2">
-                            <Download className="w-4 h-4" /> Export {viewMode === "logs" ? "Logs" : "Users"}
-                        </button>
+                        {viewMode !== "user_detail" && (
+                            <button onClick={exportCSV} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center gap-2">
+                                <Download className="w-4 h-4" /> Export {viewMode === "logs" ? "Logs" : "Users"}
+                            </button>
+                        )}
                         <button onClick={fetchStats} className="p-2 hover:bg-white rounded-full transition-colors"><RefreshCw className="w-5 h-5 text-gray-500" /></button>
                     </div>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex gap-4 border-b border-gray-200 pb-1">
-                    <button onClick={() => setViewMode("logs")} className={cn("px-4 py-2 font-medium text-sm transition-colors relative", viewMode === "logs" ? "text-purple-600 after:absolute after:bottom-[-5px] after:left-0 after:w-full after:h-0.5 after:bg-purple-600" : "text-gray-500 hover:text-gray-700")}>
-                        Generation Logs
-                    </button>
-                    <button onClick={() => setViewMode("users")} className={cn("px-4 py-2 font-medium text-sm transition-colors relative", viewMode === "users" ? "text-purple-600 after:absolute after:bottom-[-5px] after:left-0 after:w-full after:h-0.5 after:bg-purple-600" : "text-gray-500 hover:text-gray-700")}>
-                        Users ({users.length})
-                    </button>
-                    <button onClick={() => setViewMode("coupons")} className={cn("px-4 py-2 font-medium text-sm transition-colors relative", viewMode === "coupons" ? "text-purple-600 after:absolute after:bottom-[-5px] after:left-0 after:w-full after:h-0.5 after:bg-purple-600" : "text-gray-500 hover:text-gray-700")}>
-                        Coupons
-                    </button>
-                </div>
+                {viewMode !== "user_detail" && (
+                    <div className="flex gap-4 border-b border-gray-200 pb-1">
+                        <button onClick={() => setViewMode("logs")} className={cn("px-4 py-2 font-medium text-sm transition-colors relative", viewMode === "logs" ? "text-purple-600 after:absolute after:bottom-[-5px] after:left-0 after:w-full after:h-0.5 after:bg-purple-600" : "text-gray-500 hover:text-gray-700")}>
+                            Generation Logs
+                        </button>
+                        <button onClick={() => setViewMode("users")} className={cn("px-4 py-2 font-medium text-sm transition-colors relative", viewMode === "users" ? "text-purple-600 after:absolute after:bottom-[-5px] after:left-0 after:w-full after:h-0.5 after:bg-purple-600" : "text-gray-500 hover:text-gray-700")}>
+                            Users ({users.length})
+                        </button>
+                        <button onClick={() => setViewMode("coupons")} className={cn("px-4 py-2 font-medium text-sm transition-colors relative", viewMode === "coupons" ? "text-purple-600 after:absolute after:bottom-[-5px] after:left-0 after:w-full after:h-0.5 after:bg-purple-600" : "text-gray-500 hover:text-gray-700")}>
+                            Coupons
+                        </button>
+                    </div>
+                )}
 
                 {/* Settings & View Control based on Tab */}
                 {viewMode === "logs" && (
@@ -366,6 +398,14 @@ export default function AdminPage() {
                             <p className="text-2xl font-bold text-green-600">{stats.totalPaid} ({stats.conversionRate}%)</p>
                         </div>
                         <div className="bg-white p-4 rounded-xl border shadow-sm">
+                            <p className="text-xs text-gray-500 uppercase font-bold">Revenue</p>
+                            <p className="text-2xl font-bold text-purple-600">${stats.totalRevenue}</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border shadow-sm">
+                            <p className="text-xs text-gray-500 uppercase font-bold">Credits</p>
+                            <p className="text-2xl font-bold text-gray-900">{stats.totalOutstandingCredits}</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-xl border shadow-sm">
                             <p className="text-xs text-gray-500 uppercase font-bold">Avg Basic</p>
                             <p className="text-2xl font-bold text-orange-500">★ {stats.avgBasic}</p>
                         </div>
@@ -378,7 +418,133 @@ export default function AdminPage() {
 
                 {/* Main Content Area */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    {viewMode === "users" ? (
+                    {viewMode === "user_detail" && userDetail ? (
+                        <div className="p-8">
+                            <div className="flex items-center gap-4 mb-8">
+                                <button onClick={closeDetailView} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                    <ArrowLeft className="w-5 h-5 text-gray-600" />
+                                </button>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900">User Details</h2>
+                                    <p className="text-gray-500">{userDetail.user.email}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid lg:grid-cols-3 gap-8">
+                                {/* Profile Info */}
+                                <div className="space-y-8">
+                                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                                        <h3 className="font-bold text-gray-900 mb-4">Profile Information</h3>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-bold uppercase">User ID</label>
+                                                <p className="text-sm font-mono text-gray-900 break-all">{userDetail.user.id}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-bold uppercase">Account Type</label>
+                                                <p className="text-sm text-gray-900 capitalize">{userDetail.user.userType || "Individual"}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-bold uppercase">Credits</label>
+                                                <p className="text-xl font-bold text-purple-600">{userDetail.user.credits}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-bold uppercase">Business Name</label>
+                                                <p className="text-sm text-gray-900">{userDetail.user.businessName || "-"}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-bold uppercase">Phone</label>
+                                                <p className="text-sm text-gray-900">{userDetail.user.phoneNumber || "-"}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-bold uppercase">Pregnancy Weeks</label>
+                                                <p className="text-sm text-gray-900">{userDetail.user.pregnancyWeeks || "-"}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-bold uppercase">Scan Volume</label>
+                                                <p className="text-sm text-gray-900">{userDetail.user.monthlyScanVolume || "-"}</p>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-bold uppercase">Joined</label>
+                                                <p className="text-sm text-gray-900">{new Date(userDetail.user.createdAt).toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Detail Tabs (Gallery & Tx) */}
+                                <div className="lg:col-span-2 space-y-8">
+                                    {/* Gallery */}
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                            <ImageIcon className="w-5 h-5 text-gray-500" /> User Gallery ({userDetail.images.length})
+                                        </h3>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                            {userDetail.images.map((img: any) => (
+                                                <div key={img.id} className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden group relative">
+                                                    <div className="aspect-square relative">
+                                                        {img.advancedUrl ? (
+                                                            // eslint-disable-next-line @next/next/no-img-element
+                                                            <img src={img.advancedUrl} className={cn("w-full h-full object-cover", !img.unlocked && "blur-sm opacity-50")} alt="Gen" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">Processing</div>
+                                                        )}
+                                                        <div className="absolute top-2 right-2 flex gap-1">
+                                                            <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold", img.unlocked ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700")}>
+                                                                {img.unlocked ? "UNLOCKED" : "LOCKED"}
+                                                            </span>
+                                                        </div>
+                                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                            <a href={img.originalUrl} target="_blank" className="text-white text-xs hover:underline">Orig</a>
+                                                            <a href={img.basicUrl} target="_blank" className="text-white text-xs hover:underline">Basic</a>
+                                                            <a href={img.advancedUrl} target="_blank" className="text-white text-xs hover:underline">Adv</a>
+                                                        </div>
+                                                    </div>
+                                                    <div className="p-2 text-[10px] text-gray-500 flex justify-between">
+                                                        <span>{new Date(img.createdAt).toLocaleDateString()}</span>
+                                                        {img.unlockedAt && <span>Unit: {new Date(img.unlockedAt).toLocaleDateString()}</span>}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {userDetail.images.length === 0 && <p className="text-gray-500 text-sm">No images generated.</p>}
+                                        </div>
+                                    </div>
+
+                                    {/* Transactions */}
+                                    <div>
+                                        <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                            <CreditCard className="w-5 h-5 text-gray-500" /> Transaction History
+                                        </h3>
+                                        <table className="w-full text-sm text-left border rounded-lg overflow-hidden">
+                                            <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                                                <tr>
+                                                    <th className="px-4 py-2">Date</th>
+                                                    <th className="px-4 py-2">Type</th>
+                                                    <th className="px-4 py-2">Amount</th>
+                                                    <th className="px-4 py-2 text-right">Credits</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {userDetail.transactions.map((tx: any) => (
+                                                    <tr key={tx.id}>
+                                                        <td className="px-4 py-2">{new Date(tx.createdAt).toLocaleDateString()}</td>
+                                                        <td className="px-4 py-2">{tx.transactionType}</td>
+                                                        <td className="px-4 py-2">{tx.amountPaid ? `$${tx.amountPaid}` : "-"}</td>
+                                                        <td className={cn("px-4 py-2 text-right font-bold", tx.creditsChange > 0 ? "text-green-600" : "text-gray-900")}>
+                                                            {tx.creditsChange > 0 ? "+" : ""}{tx.creditsChange}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {userDetail.transactions.length === 0 && (
+                                                    <tr><td colSpan={4} className="p-4 text-center text-gray-500">No transactions.</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : viewMode === "users" ? (
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-gray-50 text-gray-500 font-medium uppercase text-xs">
@@ -389,11 +555,12 @@ export default function AdminPage() {
                                         <th className="px-6 py-3">Expires</th>
                                         <th className="px-6 py-3">Stats (Gen / Tx)</th>
                                         <th className="px-6 py-3">Joined</th>
+                                        <th className="px-6 py-3 text-right">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {users.map((u) => (
-                                        <tr key={u.id} className="hover:bg-gray-50/50">
+                                        <tr key={u.id} className="hover:bg-gray-50/50 cursor-pointer" onClick={() => fetchUserDetails(u.id)}>
                                             <td className="px-6 py-3">
                                                 <div>
                                                     <div className="font-medium text-gray-900">{u.email}</div>
@@ -411,6 +578,9 @@ export default function AdminPage() {
                                             </td>
                                             <td className="px-6 py-3 text-gray-600">{u.imagesCount} Gen / {u.transactionsCount} Tx</td>
                                             <td className="px-6 py-3 text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
+                                            <td className="px-6 py-3 text-right">
+                                                <button onClick={(e) => { e.stopPropagation(); fetchUserDetails(u.id); }} className="text-purple-600 font-bold hover:underline">View</button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -597,3 +767,5 @@ export default function AdminPage() {
         </div >
     );
 }
+
+

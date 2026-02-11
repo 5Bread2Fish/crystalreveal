@@ -6,7 +6,12 @@ import prisma from "@/lib/prisma";
 export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
+    console.log("=== UNLOCK API DEBUG ===");
+    console.log("Session:", session);
+    console.log("User email:", session?.user?.email);
+
+    if (!session || !session.user?.email) {
+        console.log("ERROR: No session or email");
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -17,19 +22,28 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Image ID is required" }, { status: 400 });
         }
 
-        // Start transaction
-        const result = await prisma.$transaction(async (tx: any) => {
-            // 1. Check User Credits
-            const user = await tx.user.findUnique({
-                where: { id: session.user.id },
-            });
+        console.log("Looking up user with email:", session.user.email);
 
-            if (!user || user.credits < 1) {
+        // Get user from database
+        const user = await prisma.user.findUnique({
+            where: { email: session.user.email }
+        });
+
+        console.log("User found:", user ? `ID: ${user.id}, Credits: ${user.credits}` : "NOT FOUND");
+
+        if (!user) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
+        // Start transaction
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Check User Credits
+            if (user.credits < 1) {
                 throw new Error("Insufficient credits");
             }
 
-            // 2. Check Image Ownership and Status
-            const image = await tx.imageGeneration.findUnique({
+            // 2. Find Image
+            let image = await tx.imageGeneration.findUnique({
                 where: { id: imageId },
             });
 
@@ -37,28 +51,41 @@ export async function POST(req: Request) {
                 throw new Error("Image not found");
             }
 
+            // 3. CLAIM GUEST IMAGE: If image has no userId, claim it for this user
+            if (!image.userId) {
+                console.log(`Claiming guest image ${imageId} for user ${user.id}`);
+                image = await tx.imageGeneration.update({
+                    where: { id: imageId },
+                    data: { userId: user.id, sessionId: null }
+                });
+            }
+
+            // 4. Check Ownership (after potential claim)
             if (image.userId !== user.id) {
                 throw new Error("Unauthorized access to image");
             }
 
-            if (image.isUnlocked) {
+            if (image.unlocked) {
                 return { success: true, alreadyUnlocked: true, image };
             }
 
-            // 3. Deduct Credit
+            // 5. Deduct Credit
             await tx.user.update({
                 where: { id: user.id },
                 data: { credits: { decrement: 1 } },
             });
 
-            // 4. Update Image Status
+            // 6. Update Image Status
             const updatedImage = await tx.imageGeneration.update({
                 where: { id: imageId },
-                data: { isUnlocked: true },
-                select: { id: true, isUnlocked: true, basicUrl: true, advancedUrl: true, originalUrl: true }
+                data: {
+                    unlocked: true,
+                    unlockedAt: new Date()
+                },
+                select: { id: true, unlocked: true, basicUrl: true, advancedUrl: true, originalUrl: true }
             });
 
-            // 5. Log Transaction
+            // 7. Log Transaction
             await tx.creditTransaction.create({
                 data: {
                     userId: user.id,
@@ -68,6 +95,7 @@ export async function POST(req: Request) {
                 },
             });
 
+            console.log("SUCCESS: Image unlocked, credit deducted");
             return { success: true, image: updatedImage };
         });
 
@@ -81,3 +109,4 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
     }
 }
+

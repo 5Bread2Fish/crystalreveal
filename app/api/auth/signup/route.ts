@@ -14,6 +14,7 @@ export async function POST(req: Request) {
             businessName,
             ownerName,
             phoneNumber,
+            website,
             monthlyScanVolume,
             pregnancyWeeks,
             marketingAgreed
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
                 businessName,
                 ownerName,
                 phoneNumber,
+                website,
                 monthlyScanVolume,
                 pregnancyWeeks,
                 marketingAgreed: marketingAgreed ?? true,

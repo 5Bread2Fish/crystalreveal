@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url = env("POSTGRES_PRISMA_URL") // Uses connection pooling
+  directUrl = env("POSTGRES_URL_NON_POOLING") // Uses direct connection
 }
 
 model User {
@@ -22,6 +23,7 @@ model User {
   phoneNumber       String?
   pregnancyWeeks    String?
   monthlyScanVolume String?
+  website           String?
   marketingAgreed   Boolean  @default(true)
   marketingAgreedAt DateTime?
   createdAt         DateTime @default(now())
@@ -38,7 +40,10 @@ model ImageGeneration {
   originalUrl     String?
   basicUrl        String?
   advancedUrl     String? 
-  isUnlocked      Boolean  @default(false)
+  unlocked        Boolean  @default(false)
+  unlockedAt      DateTime?
+  ip              String?
+  country         String?
   createdAt       DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])
@@ -52,8 +57,10 @@ model CreditTransaction {
   discountAmount Decimal? // Discounted amount
   couponCode     String?  // Code used
   creditsChange  Int
-  transactionType String // PURCHASE, USE, BONUS
+  transactionType String // PURCHASE, USE, BONUS, EXPIRATION
   stripeChargeId String?
+  expiresAt      DateTime? // When credits from this purchase expire
+  isExpired      Boolean  @default(false)
   createdAt      DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])

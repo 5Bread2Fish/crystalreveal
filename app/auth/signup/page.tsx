@@ -21,6 +21,7 @@ function SignUpContent() {
         ownerName: "",
         countryCode: "+1",
         phoneNumber: "",
+        website: "",
         monthlyScanVolume: "", // Default empty to force selection
         pregnancyWeeks: "",
         marketingAgreed: true,
@@ -213,6 +214,13 @@ function SignUpContent() {
                                 placeholder="Owner Name"
                                 value={formData.ownerName}
                                 onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
+                            />
+                            <input
+                                type="url"
+                                className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                placeholder="Website (Optional)"
+                                value={formData.website}
+                                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                             />
                             <div className="flex gap-2">
                                 <select
