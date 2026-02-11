@@ -142,8 +142,9 @@ export async function GET(req: NextRequest) {
         const result = await processCreditFulfillment(sessionId, session);
 
         if ('error' in result) {
-            // Redirect to home with error message
-            return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(result.error || 'unknown')}`, req.url));
+            // result.error가 없을 경우를 대비해 기본 메시지('Unknown Error')를 넣어줍니다.
+            const errorMessage = result.error || 'Unknown Error';
+            return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(errorMessage)}`, req.url));
         }
 
         // Redirect to home with success message
