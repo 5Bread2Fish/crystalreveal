@@ -12,13 +12,17 @@ export default function AdminPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState("");
     const [activeTab, setActiveTab] = useState<TabType>("overview");
+    const [loginError, setLoginError] = useState("");
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
+        setLoginError(""); // Clear previous errors
         if (password.trim() === "Humanscape1!") {
             setIsAuthenticated(true);
+            setPassword(""); // Clear password on success
         } else {
-            alert("Incorrect Password");
+            setLoginError("Incorrect password. Please try again.");
+            setPassword(""); // Clear password field
         }
     };
 
@@ -34,13 +38,18 @@ export default function AdminPage() {
                         <p className="text-gray-500 text-sm mt-2">Enter password to continue</p>
                     </div>
                     <form onSubmit={handleLogin} className="space-y-4">
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Password"
-                            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                        />
+                        <div>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Password"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                            />
+                            {loginError && (
+                                <p className="text-red-500 text-sm mt-2">{loginError}</p>
+                            )}
+                        </div>
                         <button
                             type="submit"
                             className="w-full bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 transition-colors"

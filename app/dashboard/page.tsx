@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { User, CreditCard, Image as ImageIcon, Settings, LogOut, Loader2, Download, ExternalLink, HelpCircle, Lock } from "lucide-react";
+import { User, CreditCard, Image as ImageIcon, Settings, LogOut, Loader2, Download, HelpCircle, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Force dynamic rendering to fix build error
@@ -226,12 +226,32 @@ function GalleryTab() {
                             {/* Actions Overlay (Only if Unlocked) */}
                             {img.unlocked && (
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10">
-                                    <a href={img.advancedUrl} download target="_blank" className="p-2 bg-white rounded-full text-gray-900 hover:text-purple-600 transition-colors" title="Download Advanced">
+                                    <button
+                                        onClick={async () => {
+                                            const version = imageVersions[img.id] || 'advanced';
+                                            const imageUrl = version === 'original' ? img.originalUrl : version === 'basic' ? img.basicUrl : img.advancedUrl;
+                                            if (!imageUrl) return;
+
+                                            try {
+                                                const response = await fetch(imageUrl);
+                                                const blob = await response.blob();
+                                                const url = window.URL.createObjectURL(blob);
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                a.download = `crystalreveal-${version}-${img.id}.png`;
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                window.URL.revokeObjectURL(url);
+                                                document.body.removeChild(a);
+                                            } catch (error) {
+                                                console.error('Download failed:', error);
+                                            }
+                                        }}
+                                        className="p-2 bg-white rounded-full text-gray-900 hover:text-purple-600 transition-colors"
+                                        title={`Download ${imageVersions[img.id] || 'Advanced'}`}
+                                    >
                                         <Download className="w-5 h-5" />
-                                    </a>
-                                    <a href={img.originalUrl} target="_blank" className="p-2 bg-white rounded-full text-gray-900 hover:text-purple-600 transition-colors" title="View Original">
-                                        <ExternalLink className="w-5 h-5" />
-                                    </a>
+                                    </button>
                                 </div>
                             )}
                         </div>
