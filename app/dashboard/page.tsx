@@ -311,9 +311,27 @@ function BillingTab({ session }: { session: any }) {
                     <div>
                         <div className="text-4xl font-extrabold text-gray-900">{session.user.credits}</div>
                         <p className="text-gray-500">Available Credits</p>
-                        {session.user.creditExpiresAt && (
-                            <p className="text-sm text-gray-400 mt-1">Expires on {new Date(session.user.creditExpiresAt).toLocaleDateString()}</p>
-                        )}
+                        {(() => {
+                            // Find nearest expiration from transactions
+                            const activeCredits = transactions.filter(tx =>
+                                tx.transactionType === 'PURCHASE' &&
+                                tx.expiresAt &&
+                                new Date(tx.expiresAt) > new Date() &&
+                                !tx.isExpired
+                            );
+
+                            if (activeCredits.length > 0) {
+                                const nearest = activeCredits.reduce((prev, curr) =>
+                                    new Date(curr.expiresAt) < new Date(prev.expiresAt) ? curr : prev
+                                );
+                                return (
+                                    <p className="text-sm text-orange-600 mt-1 font-medium">
+                                        {nearest.creditsChange} credits expire on {new Date(nearest.expiresAt).toLocaleDateString()}
+                                    </p>
+                                );
+                            }
+                            return null;
+                        })()}
                     </div>
                     <Link href="/pricing" className="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-purple-700 transition-colors shadow-lg shadow-purple-200">
                         Buy More Credits
@@ -331,21 +349,35 @@ function BillingTab({ session }: { session: any }) {
                                 <th className="px-6 py-4 font-semibold text-gray-700">Description</th>
                                 <th className="px-6 py-4 font-semibold text-gray-700">Amount</th>
                                 <th className="px-6 py-4 font-semibold text-gray-700 text-right">Credits</th>
+                                <th className="px-6 py-4 font-semibold text-gray-700 text-right">Expires On</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {transactions.length > 0 ? transactions.map((tx) => (
                                 <tr key={tx.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4 text-gray-600">{new Date(tx.createdAt).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 font-medium text-gray-900">{tx.transactionType === 'CHARGE' ? 'Credit Purchase' : 'Image Unlock'}</td>
+                                    <td className="px-6 py-4 font-medium text-gray-900">{tx.transactionType === 'PURCHASE' ? 'Credit Purchase' : tx.transactionType === 'USE' ? 'Image Unlock' : tx.transactionType}</td>
                                     <td className="px-6 py-4 text-gray-600">{tx.amountPaid ? `$${Number(tx.amountPaid).toFixed(2)}` : '-'}</td>
                                     <td className={cn("px-6 py-4 font-bold text-right", tx.creditsChange > 0 ? "text-green-600" : "text-gray-900")}>
                                         {tx.creditsChange > 0 ? "+" : ""}{tx.creditsChange}
                                     </td>
+                                    <td className="px-6 py-4 text-right text-sm">
+                                        {tx.expiresAt ? (
+                                            <span className={cn(
+                                                "font-medium",
+                                                new Date(tx.expiresAt) < new Date() || tx.isExpired ? "text-red-500" : "text-gray-600"
+                                            )}>
+                                                {new Date(tx.expiresAt).toLocaleDateString()}
+                                                {(new Date(tx.expiresAt) < new Date() || tx.isExpired) && " (Expired)"}
+                                            </span>
+                                        ) : (
+                                            <span className="text-gray-400">-</span>
+                                        )}
+                                    </td>
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No transactions found.</td>
+                                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">No transactions found.</td>
                                 </tr>
                             )}
                         </tbody>
