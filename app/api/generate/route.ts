@@ -199,8 +199,6 @@ export async function POST(req: NextRequest) {
                     basicUrl: basicBlob.url,
                     advancedUrl: advancedBlob.url,
                     unlocked: false,
-                    ip: ip,
-                    country: country,
                 }
             });
         } catch (e) {
