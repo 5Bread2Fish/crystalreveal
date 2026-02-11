@@ -441,10 +441,47 @@ function BillingTab() {
     const [search, setSearch] = useState({ column: "email", value: "" });
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState<any>(null);
+    const [freePromotion, setFreePromotion] = useState(false);
+    const [promotionLoading, setPromotionLoading] = useState(false);
 
     useEffect(() => {
         fetchTransactions();
+        fetchPromotionStatus();
     }, [page]);
+
+    const fetchPromotionStatus = async () => {
+        try {
+            const res = await fetch('/api/admin/promotion');
+            const data = await res.json();
+            setFreePromotion(data.freeUnlockMode || false);
+        } catch (e) {
+            console.error('Failed to fetch promotion status:', e);
+        }
+    };
+
+    const togglePromotion = async () => {
+        setPromotionLoading(true);
+        try {
+            const res = await fetch('/api/admin/promotion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    freeUnlockMode: !freePromotion,
+                    adminId: 'admin'
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setFreePromotion(data.freeUnlockMode);
+                alert(`Free Promotion ${data.freeUnlockMode ? 'ENABLED' : 'DISABLED'}! Users can now ${data.freeUnlockMode ? 'unlock images for free' : 'only unlock with credits'}.`);
+            }
+        } catch (e) {
+            console.error('Failed to toggle promotion:', e);
+            alert('Failed to toggle promotion mode');
+        } finally {
+            setPromotionLoading(false);
+        }
+    };
 
     const fetchTransactions = async () => {
         setLoading(true);
@@ -475,6 +512,38 @@ function BillingTab() {
 
     return (
         <div className="space-y-6">
+            {/* Free Promotion Toggle */}
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-2xl border-2 border-purple-200">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+                            🎁 Free Promotion Mode
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                            {freePromotion
+                                ? "Users can unlock images for FREE (adds +1 credit, then uses -1 credit)"
+                                : "Users need credits to unlock images (normal mode)"}
+                        </p>
+                    </div>
+                    <button
+                        onClick={togglePromotion}
+                        disabled={promotionLoading}
+                        className={cn(
+                            "relative inline-flex h-8 w-14 items-center rounded-full transition-colors",
+                            freePromotion ? "bg-green-500" : "bg-gray-300",
+                            promotionLoading && "opacity-50 cursor-not-allowed"
+                        )}
+                    >
+                        <span
+                            className={cn(
+                                "inline-block h-6 w-6 transform rounded-full bg-white transition-transform",
+                                freePromotion ? "translate-x-7" : "translate-x-1"
+                            )}
+                        />
+                    </button>
+                </div>
+            </div>
+
             {/* Search */}
             <div className="bg-white p-6 rounded-2xl border border-gray-200">
                 <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -605,6 +674,9 @@ function UsersTab() {
     const [search, setSearch] = useState({ column: "email", value: "" });
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState<any>(null);
+    const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [editForm, setEditForm] = useState<any>({});
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         fetchUsers();
@@ -637,8 +709,131 @@ function UsersTab() {
         fetchUsers();
     };
 
+    const openEditModal = async (user: any) => {
+        setSelectedUser(user);
+        setEditForm({
+            credits: user.credits,
+            creditExpiresAt: user.creditExpiresAt ? new Date(user.creditExpiresAt).toISOString().split('T')[0] : '',
+            userType: user.userType,
+            businessName: user.businessName || '',
+            phoneNumber: user.phoneNumber || ''
+        });
+    };
+
+    const closeEditModal = () => {
+        setSelectedUser(null);
+        setEditForm({});
+    };
+
+    const saveUser = async () => {
+        if (!selectedUser) return;
+
+        setSaving(true);
+        try {
+            const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(editForm)
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                alert('User updated successfully!');
+                closeEditModal();
+                fetchUsers(); // Refresh list
+            } else {
+                alert('Failed to update user');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error updating user');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
+            {/* Edit Modal */}
+            {selectedUser && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit User: {selectedUser.email}</h2>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Credits</label>
+                                <input
+                                    type="number"
+                                    value={editForm.credits}
+                                    onChange={(e) => setEditForm({ ...editForm, credits: e.target.value })}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Credit Expiration Date</label>
+                                <input
+                                    type="date"
+                                    value={editForm.creditExpiresAt}
+                                    onChange={(e) => setEditForm({ ...editForm, creditExpiresAt: e.target.value })}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">User Type</label>
+                                <select
+                                    value={editForm.userType}
+                                    onChange={(e) => setEditForm({ ...editForm, userType: e.target.value })}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                                >
+                                    <option value="INDIVIDUAL">INDIVIDUAL</option>
+                                    <option value="BUSINESS">BUSINESS</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
+                                <input
+                                    type="text"
+                                    value={editForm.businessName}
+                                    onChange={(e) => setEditForm({ ...editForm, businessName: e.target.value })}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                <input
+                                    type="text"
+                                    value={editForm.phoneNumber}
+                                    onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 mt-8">
+                            <button
+                                onClick={saveUser}
+                                disabled={saving}
+                                className="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50"
+                            >
+                                {saving ? 'Saving...' : 'Save Changes'}
+                            </button>
+                            <button
+                                onClick={closeEditModal}
+                                disabled={saving}
+                                className="flex-1 bg-gray-200 text-gray-900 py-3 rounded-xl font-bold hover:bg-gray-300 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Search */}
             <div className="bg-white p-6 rounded-2xl border border-gray-200">
                 <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -693,7 +888,11 @@ function UsersTab() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {users.map((user) => (
-                                        <tr key={user.id} className="hover:bg-gray-50">
+                                        <tr
+                                            key={user.id}
+                                            onClick={() => openEditModal(user)}
+                                            className="hover:bg-purple-50 cursor-pointer transition-colors"
+                                        >
                                             <td className="px-4 py-3 text-gray-900">{user.email}</td>
                                             <td className="px-4 py-3">
                                                 <span className={cn(

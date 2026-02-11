@@ -35,10 +35,16 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
+        // Check promotion mode
+        const promotionSettings = await prisma.promotionSettings.findFirst();
+        const isFreePromotion = promotionSettings?.freeUnlockMode || false;
+
+        console.log(`🎁 Free Promotion Mode: ${isFreePromotion ? 'ENABLED' : 'DISABLED'}`);
+
         // Start transaction
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Check User Credits
-            if (user.credits < 1) {
+            // 1. Check User Credits (skip if free promotion mode)
+            if (!isFreePromotion && user.credits < 1) {
                 throw new Error("Insufficient credits");
             }
 
@@ -69,11 +75,39 @@ export async function POST(req: Request) {
                 return { success: true, alreadyUnlocked: true, image };
             }
 
-            // 5. Deduct Credit
-            await tx.user.update({
-                where: { id: user.id },
-                data: { credits: { decrement: 1 } },
-            });
+            // 5. Handle Credits Based on Promotion Mode
+            if (isFreePromotion) {
+                // FREE PROMOTION MODE: Add +1 credit, then deduct -1 credit
+                console.log("🎁 FREE PROMOTION: Adding +1 credit for free unlock");
+
+                // Add free promotion credit
+                await tx.user.update({
+                    where: { id: user.id },
+                    data: { credits: { increment: 1 } },
+                });
+
+                // Log free promotion transaction
+                await tx.creditTransaction.create({
+                    data: {
+                        userId: user.id,
+                        amountPaid: 0,
+                        creditsChange: 1,
+                        transactionType: "FREE_PROMOTION",
+                    },
+                });
+
+                // Deduct credit for unlock
+                await tx.user.update({
+                    where: { id: user.id },
+                    data: { credits: { decrement: 1 } },
+                });
+            } else {
+                // NORMAL MODE: Just deduct credit
+                await tx.user.update({
+                    where: { id: user.id },
+                    data: { credits: { decrement: 1 } },
+                });
+            }
 
             // 6. Update Image Status
             const updatedImage = await tx.imageGeneration.update({
@@ -85,7 +119,7 @@ export async function POST(req: Request) {
                 select: { id: true, unlocked: true, basicUrl: true, advancedUrl: true, originalUrl: true }
             });
 
-            // 7. Log Transaction
+            // 7. Log USE Transaction (always happens)
             await tx.creditTransaction.create({
                 data: {
                     userId: user.id,
@@ -95,8 +129,8 @@ export async function POST(req: Request) {
                 },
             });
 
-            console.log("SUCCESS: Image unlocked, credit deducted");
-            return { success: true, image: updatedImage };
+            console.log(`SUCCESS: Image unlocked ${isFreePromotion ? '(FREE PROMOTION)' : ''}, credit deducted`);
+            return { success: true, image: updatedImage, freePromotion: isFreePromotion };
         });
 
         return NextResponse.json(result);

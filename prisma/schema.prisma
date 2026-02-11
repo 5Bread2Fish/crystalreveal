@@ -57,11 +57,18 @@ model CreditTransaction {
   discountAmount Decimal? // Discounted amount
   couponCode     String?  // Code used
   creditsChange  Int
-  transactionType String // PURCHASE, USE, BONUS, EXPIRATION
+  transactionType String // PURCHASE, USE, BONUS, EXPIRATION, FREE_PROMOTION
   stripeChargeId String?
   expiresAt      DateTime? // When credits from this purchase expire
   isExpired      Boolean  @default(false)
   createdAt      DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
+}
+
+model PromotionSettings {
+  id              String   @id @default(cuid())
+  freeUnlockMode  Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?  // Admin identifier
 }
