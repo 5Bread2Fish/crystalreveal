@@ -143,7 +143,7 @@ export async function GET(req: NextRequest) {
 
         if ('error' in result) {
             // Redirect to home with error message
-            return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(result.error)}`, req.url));
+            return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(result.error || 'unknown')}`, req.url));
         }
 
         // Redirect to home with success message
