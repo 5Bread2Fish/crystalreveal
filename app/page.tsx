@@ -2,7 +2,7 @@
 
 import { useState, useRef, DragEvent, useEffect } from "react";
 import Image from "next/image";
-import { Upload, Sparkles, Lock, Maximize2, X, ChevronLeft, ChevronRight, Zap, Users, TrendingUp, Star, Check, Download, Loader2, User as UserIcon, LogOut, HelpCircle, Crown, Timer, RefreshCcw, ArrowRight, CreditCard, ExternalLink } from "lucide-react";
+import { Upload, Sparkles, Lock, Maximize2, X, ChevronLeft, ChevronRight, Zap, Users, TrendingUp, Star, Check, Download, Loader2, User as UserIcon, LogOut, HelpCircle, Crown, Timer, RefreshCcw, ArrowRight, CreditCard, ExternalLink, Settings } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { upload } from "@vercel/blob/client";
@@ -562,6 +562,9 @@ export default function Home() {
                         </Link>
                     </div>
                     <div className="flex items-center gap-4">
+                        <Link href="/admin" className="p-2 text-gray-500 hover:text-purple-600 transition-colors" title="Admin">
+                            <Settings className="w-5 h-5" />
+                        </Link>
                         <Link href="/help" className="p-2 text-gray-500 hover:text-purple-600 transition-colors" title="Need Help?">
                             <HelpCircle className="w-5 h-5" />
                         </Link>
@@ -883,14 +886,30 @@ export default function Home() {
                                         <Maximize2 className="w-4 h-4" />
                                         <span className="text-sm">Compare</span>
                                     </button>
-                                    <a
-                                        href={generatedImages.advanced}
-                                        download="bomee-crystalreveal-advanced.png"
+                                    <button
+                                        onClick={async () => {
+                                            const url = generatedImages.advanced;
+                                            const filename = 'bomee-crystalreveal-advanced.png';
+                                            try {
+                                                const response = await fetch(url);
+                                                const blob = await response.blob();
+                                                const blobUrl = window.URL.createObjectURL(blob);
+                                                const link = document.createElement('a');
+                                                link.href = blobUrl;
+                                                link.download = filename;
+                                                document.body.appendChild(link);
+                                                link.click();
+                                                document.body.removeChild(link);
+                                                window.URL.revokeObjectURL(blobUrl);
+                                            } catch (e) {
+                                                console.error("Download failed", e);
+                                            }
+                                        }}
                                         className="flex-[1.5] py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-bold shadow-md shadow-green-200 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02]"
                                     >
                                         <Download className="w-5 h-5" />
                                         <span>Download</span>
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         )}

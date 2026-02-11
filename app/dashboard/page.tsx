@@ -153,6 +153,7 @@ function OverviewTab({ session, setActiveTab }: { session: any, setActiveTab: (t
 function GalleryTab() {
     const [images, setImages] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [imageVersions, setImageVersions] = useState<{ [key: string]: 'original' | 'basic' | 'advanced' }>({});
     const router = useRouter();
 
     useEffect(() => {
@@ -207,16 +208,20 @@ function GalleryTab() {
                             )}
 
                             {/* Image Display */}
-                            {img.advancedUrl ? (
-                                <Image
-                                    src={img.advancedUrl}
-                                    alt="Generated"
-                                    fill
-                                    className={cn("object-cover transition-transform duration-500 group-hover:scale-105", !img.unlocked && "blur-md scale-105")}
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center h-full text-gray-400">Processing...</div>
-                            )}
+                            {(() => {
+                                const version = imageVersions[img.id] || 'advanced';
+                                const imageUrl = version === 'original' ? img.originalUrl : version === 'basic' ? img.basicUrl : img.advancedUrl;
+                                return imageUrl ? (
+                                    <Image
+                                        src={imageUrl}
+                                        alt="Generated"
+                                        fill
+                                        className={cn("object-cover transition-transform duration-500 group-hover:scale-105", !img.unlocked && "blur-md scale-105")}
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center h-full text-gray-400">Processing...</div>
+                                );
+                            })()}
 
                             {/* Actions Overlay (Only if Unlocked) */}
                             {img.unlocked && (
@@ -244,11 +249,32 @@ function GalleryTab() {
                                 {/* Versions Access */}
                                 {img.unlocked && (
                                     <div className="flex gap-2 mt-3 text-xs">
-                                        <a href={img.originalUrl} target="_blank" className="hover:text-purple-600 underline text-gray-500">Original</a>
+                                        <button
+                                            onClick={() => setImageVersions(prev => ({ ...prev, [img.id]: 'original' }))}
+                                            className={cn(
+                                                "hover:text-purple-600 underline",
+                                                imageVersions[img.id] === 'original' ? "text-purple-600 font-medium" : "text-gray-500"
+                                            )}>
+                                            Original
+                                        </button>
                                         <span className="text-gray-300">|</span>
-                                        <a href={img.basicUrl} target="_blank" className="hover:text-purple-600 underline text-gray-500">Basic</a>
+                                        <button
+                                            onClick={() => setImageVersions(prev => ({ ...prev, [img.id]: 'basic' }))}
+                                            className={cn(
+                                                "hover:text-purple-600 underline",
+                                                imageVersions[img.id] === 'basic' ? "text-purple-600 font-medium" : "text-gray-500"
+                                            )}>
+                                            Basic
+                                        </button>
                                         <span className="text-gray-300">|</span>
-                                        <a href={img.advancedUrl} target="_blank" className="hover:text-purple-600 underline text-purple-600 font-medium">Advanced</a>
+                                        <button
+                                            onClick={() => setImageVersions(prev => ({ ...prev, [img.id]: 'advanced' }))}
+                                            className={cn(
+                                                "hover:text-purple-600 underline",
+                                                (!imageVersions[img.id] || imageVersions[img.id] === 'advanced') ? "text-purple-600 font-medium" : "text-gray-500"
+                                            )}>
+                                            Advanced
+                                        </button>
                                     </div>
                                 )}
                             </div>
