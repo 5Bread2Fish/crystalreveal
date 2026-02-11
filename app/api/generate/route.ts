@@ -8,6 +8,10 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
+    console.log("=== GENERATE API START ===");
+    console.log("Timestamp:", new Date().toISOString());
+    console.log("Environment:", process.env.VERCEL_ENV || 'local');
+
     try {
         const formData = await req.formData();
         const file = formData.get("file") as File;
@@ -127,7 +131,12 @@ export async function POST(req: NextRequest) {
         }
 
         // Upload to Blob for Persistence & History
-        console.log("Uploading to Blob...");
+        console.log("=== BLOB UPLOAD START ===");
+        console.log("Request ID:", requestId);
+        console.log("Basic buffer size:", basicBuffer?.length);
+        console.log("Advanced buffer size:", advancedBuffer?.length);
+        console.log("Original buffer size:", buffer?.length);
+        console.log("BLOB_READ_WRITE_TOKEN exists:", !!process.env.BLOB_READ_WRITE_TOKEN);
 
         // Fetch Settings for Auto-Publish
         let isHidden = false; // Default visible
@@ -141,11 +150,26 @@ export async function POST(req: NextRequest) {
             }
         } catch (e) { console.error("Failed to read settings", e); }
 
-        const [basicBlob, advancedBlob, originalBlob] = await Promise.all([
-            put(`history/${requestId}_basic.png`, basicBuffer, { access: 'public', contentType: 'image/png' }),
-            put(`history/${requestId}_advanced.png`, advancedBuffer, { access: 'public', contentType: 'image/png' }),
-            put(`history/${requestId}_original.png`, buffer, { access: 'public', contentType: 'image/png' })
-        ]);
+        let basicBlob, advancedBlob, originalBlob;
+        try {
+            console.log("Starting Vercel Blob upload...");
+            [basicBlob, advancedBlob, originalBlob] = await Promise.all([
+                put(`history/${requestId}_basic.png`, basicBuffer, { access: 'public', contentType: 'image/png' }),
+                put(`history/${requestId}_advanced.png`, advancedBuffer, { access: 'public', contentType: 'image/png' }),
+                put(`history/${requestId}_original.png`, buffer, { access: 'public', contentType: 'image/png' })
+            ]);
+            console.log("✅ Blob upload successful");
+            console.log("Basic URL:", basicBlob.url);
+            console.log("Advanced URL:", advancedBlob.url);
+            console.log("Original URL:", originalBlob.url);
+            console.log("=== BLOB UPLOAD END ===");
+        } catch (blobError: any) {
+            console.error("❌ BLOB UPLOAD FAILED");
+            console.error("Error type:", blobError?.constructor?.name);
+            console.error("Error message:", blobError?.message);
+            console.error("Error stack:", blobError?.stack);
+            throw new Error(`Blob upload failed: ${blobError?.message}`);
+        }
 
         // Save to Central Database (Legacy)
         const record = {
