@@ -24,7 +24,8 @@ function SignUpContent() {
         website: "",
         monthlyScanVolume: "", // Default empty to force selection
         pregnancyWeeks: "",
-        marketingAgreed: true,
+        country: "",
+        marketingAgreed: false,
     });
     const [tosAgreed, setTosAgreed] = useState(false);
     const [showMarketingDetails, setShowMarketingDetails] = useState(false);
@@ -56,7 +57,7 @@ function SignUpContent() {
 
     // Validation
     const isFormValid = () => {
-        if (!formData.email || !formData.password || formData.password.length < 6) return false;
+        if (!formData.email || !formData.password || formData.password.length < 6 || !formData.country) return false;
         if (userType === "BUSINESS") {
             if (!formData.businessName || !formData.ownerName || !formData.phoneNumber || !formData.monthlyScanVolume) return false;
         }
@@ -141,7 +142,7 @@ function SignUpContent() {
                             To share with staff, use a common email (e.g., info@studio.com).
                         </div>
                         <div className="bg-purple-50 text-purple-700 p-3 rounded-md text-xs">
-                            We collect Business Info (Owner Name, Phone) strictly for urgent service announcements or billing support. Your contact info helps us support you faster.
+                            Please provide accurate information to help us provide efficient support when needed.
                         </div>
                     </div>
                 )}
@@ -183,18 +184,38 @@ function SignUpContent() {
                     </div>
 
                     {userType === "INDIVIDUAL" && (
-                        <select
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 sm:text-sm text-gray-500"
-                            value={formData.pregnancyWeeks}
-                            onChange={(e) => setFormData({ ...formData, pregnancyWeeks: e.target.value })}
-                        >
-                            <option value="">Pregnancy Weeks (Optional)</option>
-                            {Array.from({ length: 39 }, (_, i) => i + 4).map((week) => (
-                                <option key={week} value={`${week} weeks`}>{week} weeks</option>
-                            ))}
-                            <option value="post-birth">Post-birth</option>
-                            <option value="not-applicable">Not Applicable</option>
-                        </select>
+                        <>
+                            <select
+                                className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 sm:text-sm text-gray-500"
+                                value={formData.pregnancyWeeks}
+                                onChange={(e) => setFormData({ ...formData, pregnancyWeeks: e.target.value })}
+                            >
+                                <option value="">Pregnancy Weeks (Optional)</option>
+                                {Array.from({ length: 39 }, (_, i) => i + 4).map((week) => (
+                                    <option key={week} value={`${week} weeks`}>{week} weeks</option>
+                                ))}
+                                <option value="post-birth">Post-birth</option>
+                                <option value="not-applicable">Not Applicable</option>
+                            </select>
+                            <select
+                                required
+                                className={`block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 sm:text-sm ${!formData.country ? "text-gray-400" : "text-gray-900"}`}
+                                value={formData.country}
+                                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                            >
+                                <option value="">Select Country *</option>
+                                <option value="United States">United States</option>
+                                <option value="South Korea">South Korea</option>
+                                <option value="United Kingdom">United Kingdom</option>
+                                <option value="Canada">Canada</option>
+                                <option value="Australia">Australia</option>
+                                <option value="Japan">Japan</option>
+                                <option value="China">China</option>
+                                <option value="Germany">Germany</option>
+                                <option value="France">France</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </>
                     )}
 
                     {userType === "BUSINESS" && (
@@ -249,18 +270,29 @@ function SignUpContent() {
                                 value={formData.monthlyScanVolume}
                                 onChange={(e) => setFormData({ ...formData, monthlyScanVolume: e.target.value })}
                             >
-                                <option value="" disabled>Select average elective ultrasound scans per month</option>
-                                <option value="0-10">0-10 Scans / Month</option>
-                                <option value="11-20">11-20 Scans / Month</option>
-                                <option value="21-30">21-30 Scans / Month</option>
-                                <option value="31-40">31-40 Scans / Month</option>
-                                <option value="41-50">41-50 Scans / Month</option>
-                                <option value="51-60">51-60 Scans / Month</option>
-                                <option value="61-70">61-70 Scans / Month</option>
-                                <option value="71-80">71-80 Scans / Month</option>
-                                <option value="81-90">81-90 Scans / Month</option>
-                                <option value="91-100">91-100 Scans / Month</option>
-                                <option value="100+">100+ Scans / Month</option>
+                                <option value="">Monthly Scan Volume *</option>
+                                <option value="1-50">1-50 scans/month</option>
+                                <option value="51-200">51-200 scans/month</option>
+                                <option value="201-500">201-500 scans/month</option>
+                                <option value="500+">500+ scans/month</option>
+                            </select>
+                            <select
+                                required
+                                className={`block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 sm:text-sm ${!formData.country ? "text-gray-400" : "text-gray-900"}`}
+                                value={formData.country}
+                                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                            >
+                                <option value="">Select Country *</option>
+                                <option value="United States">United States</option>
+                                <option value="South Korea">South Korea</option>
+                                <option value="United Kingdom">United Kingdom</option>
+                                <option value="Canada">Canada</option>
+                                <option value="Australia">Australia</option>
+                                <option value="Japan">Japan</option>
+                                <option value="China">China</option>
+                                <option value="Germany">Germany</option>
+                                <option value="France">France</option>
+                                <option value="Other">Other</option>
                             </select>
                         </>
                     )}
@@ -287,7 +319,7 @@ function SignUpContent() {
                                 className="mt-1 rounded text-purple-600 focus:ring-purple-500"
                             />
                             <span>
-                                (Optional) I agree to receive marketing updates and allow data sharing.
+                                Keep me updated with exclusive offers and product updates from Bomee.
                                 <button type="button" onClick={() => setShowMarketingDetails(!showMarketingDetails)} className="text-purple-600 hover:text-purple-500 font-medium ml-1">
                                     View Details
                                 </button>

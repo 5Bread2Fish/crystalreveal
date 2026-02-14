@@ -24,13 +24,18 @@ model User {
   pregnancyWeeks    String?
   monthlyScanVolume String?
   website           String?
+  country           String?
   marketingAgreed   Boolean  @default(true)
   marketingAgreedAt DateTime?
+  status            String   @default("active") // active, deleted
+  lastLoginAt       DateTime?
+  deletedAt         DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   
   images       ImageGeneration[]
   transactions CreditTransaction[]
+  deletionNotifications DeletedAccountNotification[]
 }
 
 model ImageGeneration {
@@ -44,6 +49,8 @@ model ImageGeneration {
   unlockedAt      DateTime?
   ip              String?
   country         String?
+  basicRating     Int?     // 1-5 stars
+  advancedRating  Int?     // 1-5 stars
   createdAt       DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])
@@ -71,4 +78,17 @@ model PromotionSettings {
   freeUnlockMode  Boolean  @default(false)
   updatedAt       DateTime @updatedAt
   updatedBy       String?  // Admin identifier
+}
+
+model DeletedAccountNotification {
+  id              String   @id @default(cuid())
+  userId          String
+  userEmail       String
+  userType        String
+  businessName    String?
+  deletedAt       DateTime @default(now())
+  imageCount      Int      @default(0)
+  creditBalance   Int      @default(0)
+  
+  user User @relation(fields: [userId], references: [id])
 }

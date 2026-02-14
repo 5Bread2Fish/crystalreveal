@@ -47,7 +47,9 @@ export async function GET(req: NextRequest) {
                     creditExpiresAt: true,
                     createdAt: true,
                     website: true,
-                    phoneNumber: true
+
+                    phoneNumber: true,
+                    status: true
                 },
                 orderBy: {
                     createdAt: "desc"

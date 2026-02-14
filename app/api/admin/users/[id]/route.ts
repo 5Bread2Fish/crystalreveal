@@ -24,7 +24,9 @@ export async function GET(
                 credits: true,
                 creditExpiresAt: true,
                 createdAt: true,
-                updatedAt: true
+
+                updatedAt: true,
+                status: true
             }
         });
 
@@ -54,7 +56,10 @@ export async function PATCH(
         if (creditExpiresAt !== undefined) updateData.creditExpiresAt = creditExpiresAt ? new Date(creditExpiresAt) : null;
         if (userType) updateData.userType = userType;
         if (businessName !== undefined) updateData.businessName = businessName;
+
         if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+        // Allow status update (active, deleted, suspended)
+        if (body.status) updateData.status = body.status;
 
         const user = await prisma.user.update({
             where: { id: params.userId },

@@ -59,6 +59,25 @@ export default function TermsPage() {
                         </p>
                     </section>
 
+                    <section className="space-y-3">
+                        <h2 className="text-xl font-bold text-gray-900">6. Data Retention & Use of Anonymized Data</h2>
+                        <p>
+                            We retain your uploaded images and generated results for a limited period to provide our services and improve our AI models. After account deletion or upon your request, all personally identifiable data will be removed from our active systems.
+                        </p>
+                        <p>
+                            However, <strong>anonymized and de-identified data</strong> (data that cannot be traced back to you) may be retained indefinitely for the following purposes:
+                        </p>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li>Training and improving AI model accuracy</li>
+                            <li>Research and development of new features</li>
+                            <li>Quality assurance and performance monitoring</li>
+                            <li>Compliance with legal and regulatory requirements</li>
+                        </ul>
+                        <p className="text-sm bg-blue-50 p-3 rounded-lg border border-blue-100 mt-2">
+                            <strong>Important:</strong> Anonymized data cannot be linked to your identity and is used solely for improving our services. This practice is standard in AI development and helps us provide better results for all users.
+                        </p>
+                    </section>
+
                     <div className="pt-8 border-t space-y-2">
                         <p className="text-sm text-gray-500 font-medium">Last Updated: January 2026</p>
                         <p className="text-sm text-gray-500">Contact: <a href="mailto:us_help@humanscape.io" className="text-purple-600 hover:underline">us_help@humanscape.io</a></p>

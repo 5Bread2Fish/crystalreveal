@@ -166,7 +166,29 @@ function GalleryTab() {
     }, []);
 
     const handleUnlock = async (imageId: string) => {
-        router.push(`/checkout?imageId=${imageId}`);
+        try {
+            const res = await fetch('/api/images/unlock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageId })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                // Refresh gallery to show unlocked image
+                const galleryRes = await fetch("/api/user/gallery");
+                const galleryData = await galleryRes.json();
+                if (galleryData.images) setImages(galleryData.images);
+
+                alert('Image unlocked successfully!');
+            } else {
+                alert(data.error || 'Failed to unlock image. Please check your credits.');
+            }
+        } catch (error) {
+            console.error('Unlock error:', error);
+            alert('Failed to unlock image. Please try again.');
+        }
     };
 
     if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-gray-300" /></div>;
@@ -216,7 +238,7 @@ function GalleryTab() {
                                         src={imageUrl}
                                         alt="Generated"
                                         fill
-                                        className={cn("object-cover transition-transform duration-500 group-hover:scale-105", !img.unlocked && "blur-md scale-105")}
+                                        className={cn("object-cover transition-transform duration-500 group-hover:scale-105")}
                                     />
                                 ) : (
                                     <div className="flex items-center justify-center h-full text-gray-400">Processing...</div>
@@ -551,7 +573,7 @@ function SettingsTab({ session }: { session: any }) {
 
                 <div className="pt-6 border-t border-gray-100 flex items-center justify-between">
                     <div>
-                        <button type="button" className="text-red-600 font-medium hover:text-red-700 text-sm">Delete Account</button>
+                        {/* Delete Account moved to separate section below */}
                     </div>
                     <button
                         type="submit"
@@ -563,7 +585,117 @@ function SettingsTab({ session }: { session: any }) {
                     </button>
                 </div>
             </form>
+
+            {/* Delete Account Section */}
+            <div className="mt-8 pt-8 border-t border-gray-200">
+                <h3 className="font-semibold text-gray-900 mb-2">Delete Account</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                    Permanently delete your account and all associated data. This action cannot be undone.
+                </p>
+                <DeleteAccountButton />
+            </div>
         </div>
+    );
+}
+
+function DeleteAccountButton() {
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [confirmText, setConfirmText] = useState("");
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDelete = async () => {
+        if (confirmText !== "DELETE") {
+            return;
+        }
+
+        setIsDeleting(true);
+
+        try {
+            const res = await fetch("/api/user/delete-account", {
+                method: "POST",
+            });
+
+            if (res.ok) {
+                // Sign out and redirect
+                await signOut({ callbackUrl: "/" });
+            } else {
+                alert("Failed to delete account. Please try again or contact support.");
+                setIsDeleting(false);
+            }
+        } catch (error) {
+            alert("An error occurred. Please try again.");
+            setIsDeleting(false);
+        }
+    };
+
+    return (
+        <>
+            <button
+                onClick={() => setShowConfirm(true)}
+                className="px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+            >
+                Delete Account
+            </button>
+
+            {/* Confirmation Modal */}
+            {showConfirm && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+                        <h3 className="text-xl font-bold text-gray-900 mb-4">Confirm Account Deletion</h3>
+
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                            <p className="text-sm text-red-800 font-medium mb-2">⚠️ Warning: This action is permanent</p>
+                            <ul className="text-xs text-red-700 space-y-1 list-disc list-inside">
+                                <li>All your generated images will be deleted</li>
+                                <li>Your credit balance will be forfeited</li>
+                                <li>Your account data will be anonymized</li>
+                                <li>This action cannot be undone</li>
+                            </ul>
+                        </div>
+
+                        <p className="text-sm text-gray-600 mb-4">
+                            Type <strong>DELETE</strong> to confirm:
+                        </p>
+
+                        <input
+                            type="text"
+                            value={confirmText}
+                            onChange={(e) => setConfirmText(e.target.value)}
+                            className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-red-500 outline-none mb-4"
+                            placeholder="Type DELETE"
+                            disabled={isDeleting}
+                        />
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowConfirm(false);
+                                    setConfirmText("");
+                                }}
+                                disabled={isDeleting}
+                                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDelete}
+                                disabled={confirmText !== "DELETE" || isDeleting}
+                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {isDeleting ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Deleting...
+                                    </>
+                                ) : (
+                                    "Delete My Account"
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }
 

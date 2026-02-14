@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BarChart3, FileText, CreditCard, Users, Calendar, Search, Loader2, ArrowLeft, TrendingUp, DollarSign, Image as ImageIcon, UserCheck } from "lucide-react";
+import { BarChart3, FileText, CreditCard, Users, Calendar, Search, Loader2, ArrowLeft, TrendingUp, DollarSign, Image as ImageIcon, UserCheck, Download } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -263,17 +263,24 @@ function GenerationsTab() {
     const [search, setSearch] = useState({ column: "email", value: "" });
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState<any>(null);
+    const [dateRange, setDateRange] = useState({
+        start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+    });
+    const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => {
         fetchGenerations();
-    }, [page]);
+    }, [page, dateRange]);
 
     const fetchGenerations = async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams({
                 page: page.toString(),
-                limit: "50"
+                limit: "50",
+                startDate: dateRange.start,
+                endDate: dateRange.end
             });
             if (search.value) {
                 params.append("search", search.column);
@@ -295,39 +302,132 @@ function GenerationsTab() {
         fetchGenerations();
     };
 
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            const params = new URLSearchParams({
+                page: "1",
+                limit: "10000",
+                startDate: dateRange.start,
+                endDate: dateRange.end
+            });
+            if (search.value) {
+                params.append("search", search.column);
+                params.append("value", search.value);
+            }
+
+            const res = await fetch(`/api/admin/generations?${params}`);
+            const data = await res.json();
+            const exportData = data.generations || [];
+
+            const headers = ["ID", "User Email", "User Type", "Status", "Original URL", "Basic URL", "Advanced URL", "Basic Rating", "Advanced Rating", "IP", "Country", "Created At"];
+            const csvContent = [
+                headers.join(","),
+                ...exportData.map((gen: any) => [
+                    gen.id,
+                    gen.user?.email || "Guest",
+                    gen.user?.userType || "Guest",
+                    gen.unlocked ? "Unlocked" : "Locked",
+                    gen.originalUrl || "",
+                    gen.basicUrl || "",
+                    gen.advancedUrl || "",
+                    gen.basicRating || "",
+                    gen.advancedRating || "",
+                    gen.ip || "",
+                    gen.country || "",
+                    new Date(gen.createdAt).toISOString()
+                ].map((field: any) => `"${String(field || "").replace(/"/g, '""')}"`).join(","))
+            ].join("\n");
+
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", `generations_${new Date().toISOString().split('T')[0]}.csv`);
+                link.style.visibility = "hidden";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        } catch (error) {
+            console.error("Export failed", error);
+            alert("Export failed");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
-            {/* Search */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-200">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Search className="w-5 h-5" />
-                    Search Generations
-                </h3>
-                <div className="flex gap-4">
-                    <select
-                        value={search.column}
-                        onChange={(e) => setSearch({ ...search, column: e.target.value })}
-                        className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
-                    >
-                        <option value="email">Email</option>
-                        <option value="userId">User ID</option>
-                        <option value="unlocked">Unlocked (true/false)</option>
-                        <option value="ip">IP Address</option>
-                        <option value="country">Country</option>
-                    </select>
-                    <input
-                        type="text"
-                        value={search.value}
-                        onChange={(e) => setSearch({ ...search, value: e.target.value })}
-                        placeholder="Search value..."
-                        className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
-                    />
-                    <button
-                        onClick={handleSearch}
-                        className="px-6 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700"
-                    >
+            <div className="grid md:grid-cols-2 gap-6">
+                {/* Search */}
+                <div className="bg-white p-6 rounded-2xl border border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Search className="w-5 h-5" />
                         Search
-                    </button>
+                    </h3>
+                    <div className="flex flex-col gap-4">
+                        <div className="flex gap-2">
+                            <select
+                                value={search.column}
+                                onChange={(e) => setSearch({ ...search, column: e.target.value })}
+                                className="px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                            >
+                                <option value="email">Email</option>
+                                <option value="userId">User ID</option>
+                                <option value="unlocked">Unlocked</option>
+                                <option value="ip">IP</option>
+                                <option value="country">Country</option>
+                            </select>
+                            <input
+                                type="text"
+                                value={search.value}
+                                onChange={(e) => setSearch({ ...search, value: e.target.value })}
+                                placeholder="Value..."
+                                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                            />
+                        </div>
+                        <button
+                            onClick={handleSearch}
+                            className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors"
+                        >
+                            Search
+                        </button>
+                    </div>
+                </div>
+
+                {/* Filters & Actions */}
+                <div className="bg-white p-6 rounded-2xl border border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Calendar className="w-5 h-5" />
+                        Date Range & Export
+                    </h3>
+                    <div className="flex flex-col gap-4">
+                        <div className="flex gap-2">
+                            <input
+                                type="date"
+                                value={dateRange.start}
+                                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                                className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                            />
+                            <span className="self-center text-gray-400">to</span>
+                            <input
+                                type="date"
+                                value={dateRange.end}
+                                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                                className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                            />
+                        </div>
+                        <button
+                            onClick={handleExport}
+                            disabled={isExporting}
+                            className="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                            Export to CSV
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -344,24 +444,19 @@ function GenerationsTab() {
                                 <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">User</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Type</th>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Images</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">IP</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Ratings</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Location</th>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Date</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {generations.map((gen) => (
                                         <tr key={gen.id} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3 text-gray-900">{gen.user?.email || "Guest"}</td>
                                             <td className="px-4 py-3">
-                                                <span className={cn(
-                                                    "px-2 py-1 rounded-full text-xs font-medium",
-                                                    gen.user?.userType === "BUSINESS" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"
-                                                )}>
-                                                    {gen.user?.userType || "Guest"}
-                                                </span>
+                                                <div className="font-medium text-gray-900">{gen.user?.email || "Guest"}</div>
+                                                <div className="text-xs text-gray-500">{gen.user?.userType || "Guest"}</div>
                                             </td>
                                             <td className="px-4 py-3">
                                                 <span className={cn(
@@ -378,9 +473,20 @@ function GenerationsTab() {
                                                     {gen.advancedUrl && <ImagePreview url={gen.advancedUrl} label="A" />}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 text-gray-600 text-xs">{gen.ip || "N/A"}</td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex flex-col gap-1 text-xs">
+                                                    {gen.basicRating && <span className="text-yellow-600">Basic: {gen.basicRating}★</span>}
+                                                    {gen.advancedRating && <span className="text-purple-600">Adv: {gen.advancedRating}★</span>}
+                                                    {!gen.basicRating && !gen.advancedRating && <span className="text-gray-400">-</span>}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="text-gray-900">{gen.country || "Unknown"}</div>
+                                                <div className="text-xs text-gray-500">{gen.ip || "N/A"}</div>
+                                            </td>
                                             <td className="px-4 py-3 text-gray-600 text-xs">
                                                 {new Date(gen.createdAt).toLocaleDateString()}
+                                                <div className="text-[10px] text-gray-400">{new Date(gen.createdAt).toLocaleTimeString()}</div>
                                             </td>
                                         </tr>
                                     ))}
@@ -537,7 +643,8 @@ function BillingTab() {
                         <span
                             className={cn(
                                 "inline-block h-6 w-6 transform rounded-full bg-white transition-transform",
-                                freePromotion ? "translate-x-7" : "translate-x-1"
+                                "translate-x-1",
+                                freePromotion && "translate-x-7"
                             )}
                         />
                     </button>
@@ -716,7 +823,8 @@ function UsersTab() {
             creditExpiresAt: user.creditExpiresAt ? new Date(user.creditExpiresAt).toISOString().split('T')[0] : '',
             userType: user.userType,
             businessName: user.businessName || '',
-            phoneNumber: user.phoneNumber || ''
+            phoneNumber: user.phoneNumber || '',
+            status: user.status || 'active'
         });
     };
 
@@ -761,6 +869,18 @@ function UsersTab() {
                         <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit User: {selectedUser.email}</h2>
 
                         <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                <select
+                                    value={editForm.status}
+                                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                                >
+                                    <option value="active">Active</option>
+                                    <option value="deleted">Deleted</option>
+                                    <option value="suspended">Suspended</option>
+                                </select>
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Credits</label>
                                 <input
@@ -879,6 +999,7 @@ function UsersTab() {
                                 <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Email</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Type</th>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Business</th>
                                         <th className="px-4 py-3 text-right font-semibold text-gray-700">Credits</th>
@@ -894,6 +1015,14 @@ function UsersTab() {
                                             className="hover:bg-purple-50 cursor-pointer transition-colors"
                                         >
                                             <td className="px-4 py-3 text-gray-900">{user.email}</td>
+                                            <td className="px-4 py-3">
+                                                <span className={cn(
+                                                    "px-2 py-1 rounded-full text-xs font-medium",
+                                                    user.status === "deleted" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+                                                )}>
+                                                    {user.status || "active"}
+                                                </span>
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <span className={cn(
                                                     "px-2 py-1 rounded-full text-xs font-medium",

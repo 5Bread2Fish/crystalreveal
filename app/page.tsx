@@ -95,6 +95,27 @@ export default function Home() {
     const [unlockError, setUnlockError] = useState("");
     const [creditUsedNotification, setCreditUsedNotification] = useState(false);
 
+    // Persist generated images to sessionStorage
+    useEffect(() => {
+        if (generatedImages) {
+            sessionStorage.setItem('bomee_generated_images', JSON.stringify(generatedImages));
+        }
+    }, [generatedImages]);
+
+    // Restore generated images from sessionStorage on mount
+    useEffect(() => {
+        const saved = sessionStorage.getItem('bomee_generated_images');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setGeneratedImages(parsed);
+            } catch (e) {
+                console.error('Failed to restore images:', e);
+                sessionStorage.removeItem('bomee_generated_images');
+            }
+        }
+    }, []);
+
     // Load global gallery on mount
     useEffect(() => {
         const fetchGallery = async () => {
@@ -447,12 +468,12 @@ export default function Home() {
         if (!generatedImages?.id) return;
 
         try {
-            await fetch("/api/feedback", {
+            await fetch("/api/images/rate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    id: generatedImages.id,
-                    style,
+                    imageId: generatedImages.id,
+                    type: style,
                     rating: score,
                 })
             });
@@ -716,14 +737,60 @@ export default function Home() {
                                 <div className="text-sm font-bold text-gray-500 tracking-wider text-center">CrystalReveal™ Basic</div>
                                 <div className="flex-1 bg-white rounded-2xl border border-gray-100 relative overflow-hidden min-h-[300px]">
                                     {generatedImages ? (
-                                        <div className="relative w-full h-full bg-black">
+                                        <div className="relative w-full h-full bg-black group">
                                             <Image src={generatedImages.basic} alt="Basic" fill className="object-contain" />
                                             {!generatedImages.isUnlocked && (
-                                                <div className="absolute inset-0 z-10 pointer-events-none bg-black/20 overflow-hidden flex flex-col justify-center items-center gap-4">
-                                                    <div className="relative w-48 h-12 opacity-50">
-                                                        <Image src="/bomee-logo.png" alt="Bomee" fill className="object-contain" />
+                                                <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
+                                                    {/* Diagonal repeating watermark pattern */}
+                                                    <div className="absolute inset-0" style={{
+                                                        backgroundImage: `repeating-linear-gradient(
+                                                            45deg,
+                                                            transparent,
+                                                            transparent 150px,
+                                                            rgba(255,255,255,0.03) 150px,
+                                                            rgba(255,255,255,0.03) 151px
+                                                        )`,
+                                                    }}>
+                                                        {[...Array(20)].map((_, i) => (
+                                                            <div
+                                                                key={i}
+                                                                className="absolute text-white/20 font-bold text-xl uppercase tracking-widest whitespace-nowrap"
+                                                                style={{
+                                                                    transform: `rotate(-45deg) translate(${(i % 4) * 250}px, ${Math.floor(i / 4) * 200 - 200}px)`,
+                                                                    left: '-10%',
+                                                                    top: `${(i % 4) * 25}%`,
+                                                                }}
+                                                            >
+                                                                CrystalReveal
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                    <span className="text-white text-2xl font-bold opacity-50 uppercase tracking-widest">CrystalReveal</span>
+                                                </div>
+                                            )}
+                                            {/* Hover Download Button (Only if Unlocked) */}
+                                            {generatedImages.isUnlocked && (
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                const response = await fetch(generatedImages.basic);
+                                                                const blob = await response.blob();
+                                                                const url = window.URL.createObjectURL(blob);
+                                                                const a = document.createElement('a');
+                                                                a.href = url;
+                                                                a.download = `crystalreveal-basic-${Date.now()}.png`;
+                                                                document.body.appendChild(a);
+                                                                a.click();
+                                                                window.URL.revokeObjectURL(url);
+                                                                document.body.removeChild(a);
+                                                            } catch (error) {
+                                                                console.error('Download failed:', error);
+                                                            }
+                                                        }}
+                                                        className="p-4 bg-white rounded-full text-gray-900 hover:bg-gray-100 transition-colors shadow-lg"
+                                                    >
+                                                        <Download className="w-6 h-6" />
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>
@@ -770,14 +837,60 @@ export default function Home() {
                                 <div className="text-sm font-bold text-gray-500 tracking-wider text-center">CrystalReveal™ Advanced</div>
                                 <div className="flex-1 bg-white rounded-2xl border border-gray-100 relative overflow-hidden min-h-[300px]">
                                     {generatedImages ? (
-                                        <div className="relative w-full h-full bg-black">
+                                        <div className="relative w-full h-full bg-black group">
                                             <Image src={generatedImages.advanced} alt="Advanced" fill className="object-contain" />
                                             {!generatedImages.isUnlocked && (
-                                                <div className="absolute inset-0 z-10 pointer-events-none bg-black/20 overflow-hidden flex flex-col justify-center items-center gap-4">
-                                                    <div className="relative w-48 h-12 opacity-50">
-                                                        <Image src="/bomee-logo.png" alt="Bomee" fill className="object-contain" />
+                                                <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
+                                                    {/* Diagonal repeating watermark pattern */}
+                                                    <div className="absolute inset-0" style={{
+                                                        backgroundImage: `repeating-linear-gradient(
+                                                            45deg,
+                                                            transparent,
+                                                            transparent 150px,
+                                                            rgba(255,255,255,0.03) 150px,
+                                                            rgba(255,255,255,0.03) 151px
+                                                        )`,
+                                                    }}>
+                                                        {[...Array(20)].map((_, i) => (
+                                                            <div
+                                                                key={i}
+                                                                className="absolute text-white/20 font-bold text-xl uppercase tracking-widest whitespace-nowrap"
+                                                                style={{
+                                                                    transform: `rotate(-45deg) translate(${(i % 4) * 250}px, ${Math.floor(i / 4) * 200 - 200}px)`,
+                                                                    left: '-10%',
+                                                                    top: `${(i % 4) * 25}%`,
+                                                                }}
+                                                            >
+                                                                CrystalReveal
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                    <span className="text-white text-2xl font-bold opacity-50 uppercase tracking-widest">CrystalReveal</span>
+                                                </div>
+                                            )}
+                                            {/* Hover Download Button (Only if Unlocked) */}
+                                            {generatedImages.isUnlocked && (
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                                                    <button
+                                                        onClick={async () => {
+                                                            try {
+                                                                const response = await fetch(generatedImages.advanced);
+                                                                const blob = await response.blob();
+                                                                const url = window.URL.createObjectURL(blob);
+                                                                const a = document.createElement('a');
+                                                                a.href = url;
+                                                                a.download = `crystalreveal-advanced-${Date.now()}.png`;
+                                                                document.body.appendChild(a);
+                                                                a.click();
+                                                                window.URL.revokeObjectURL(url);
+                                                                document.body.removeChild(a);
+                                                            } catch (error) {
+                                                                console.error('Download failed:', error);
+                                                            }
+                                                        }}
+                                                        className="p-4 bg-white rounded-full text-gray-900 hover:bg-gray-100 transition-colors shadow-lg"
+                                                    >
+                                                        <Download className="w-6 h-6" />
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>
