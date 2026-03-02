@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-export const revalidate = 0;
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
