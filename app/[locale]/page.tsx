@@ -4,10 +4,13 @@ import { useState, useRef, DragEvent, useEffect } from "react";
 import Image from "next/image";
 import { Upload, Sparkles, Lock, Maximize2, X, ChevronLeft, ChevronRight, Zap, Users, TrendingUp, Star, Check, Download, Loader2, User as UserIcon, LogOut, HelpCircle, Crown, Timer, RefreshCcw, ArrowRight, CreditCard, ExternalLink, Settings } from "lucide-react";
 import Link from "next/link";
+import { FeaturedCarousel } from "@/app/components/FeaturedCarousel";
 import { cn } from "@/lib/utils";
 import { upload } from "@vercel/blob/client";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { useLocale, useTranslations } from "next-intl";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 // Helper to convert file to base64 for storage
 const fileToBase64 = (file: File): Promise<string> => {
@@ -31,52 +34,76 @@ const packages = [
     {
         credits: 1,
         price: 9.99,
+        originalPrice: 9.99, // No discount shown for single
         name: "Pay-As-You-Go",
         description: "Perfect for expectant mothers to enhance their own photos.",
         icon: Sparkles,
         features: ["1 High-Quality Image", "Instant 8K Upgrade"],
-        lookupKey: "credit_payg",
+        lookupKey: "credit_payg19",
         unitPrice: "$9.99/generation"
     },
     {
         credits: 20,
         price: 99,
+        originalPrice: 199.8,
         name: "Starter",
         description: "Best for studios testing demand with their clients.",
         icon: Zap,
-        features: ["20 High-Quality Images", "Instant 8K Upgrade"],
+        features: ["10 High-Quality Images", "Instant 8K Upgrade"],
         lookupKey: "credit_starter",
-        unitPrice: "$4.95/generation"
+        unitPrice: "$9.99/generation"
     },
     {
         credits: 50,
         price: 199,
+        originalPrice: 499.5,
         name: "Basic",
         description: "Discounted rates for growing ultrasound businesses.",
         icon: UserIcon,
-        features: ["50 High-Quality Images", "Instant 8K Upgrade"],
+        features: ["25 High-Quality Images", "Instant 8K Upgrade"],
         lookupKey: "credit_basic",
-        unitPrice: "$3.98/generation"
+        unitPrice: "$7.99/generation"
     },
     {
         credits: 100,
         price: 299,
+        originalPrice: 999,
         name: "Pro",
         description: "The go-to choice for high-volume 3D/4D clinics.",
         icon: Crown,
         popular: true,
-        features: ["100 High-Quality Images", "Instant 8K Upgrade"],
+        features: ["50 High-Quality Images", "Instant 8K Upgrade"],
         lookupKey: "credit_pro",
-        unitPrice: "$2.99/generation"
+        unitPrice: "$5.99/generation"
     }
 ];
 
 export default function Home() {
-    const { data: session, status } = useSession();
+    const locale = useLocale();
+    const t = useTranslations();
+    const { data: session, status, update } = useSession();
     const router = useRouter();
 
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
+
+    // Restore generated images from sessionStorage on mount
+    useEffect(() => {
+        const saved = sessionStorage.getItem('bomee_generated_images');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setGeneratedImages(parsed);
+                if (parsed.original && !preview) {
+                    setPreview(parsed.original);
+                }
+            } catch (e) {
+                console.error('Failed to restore images:', e);
+                sessionStorage.removeItem('bomee_generated_images');
+            }
+        }
+    }, []);
+
     const [loading, setLoading] = useState(false);
     const [generatedImages, setGeneratedImages] = useState<GeneratedImages | null>(null);
     const [ratings, setRatings] = useState<{ basic: number; advanced: number }>({ basic: 0, advanced: 0 });
@@ -123,7 +150,8 @@ export default function Home() {
                 const res = await fetch("/api/gallery/list");
                 if (res.ok) {
                     const data = await res.json();
-                    setGallery(data.gallery || []);
+                    let items = data.gallery || [];
+                    setGallery(items);
                 }
             } catch (e) {
                 console.error("Failed to load gallery", e);
@@ -249,7 +277,7 @@ export default function Home() {
                 setGeneratedImages({
                     basic: data.basic,
                     advanced: data.advanced,
-                    original: preview || "",
+                    original: data.original || preview || "", // Prefer server URL
                     id: data.id,
                     isUnlocked: data.isUnlocked || false
                 });
@@ -270,7 +298,7 @@ export default function Home() {
     const [timeLeftToPromo, setTimeLeftToPromo] = useState("");
 
     useEffect(() => {
-        const targetDate = new Date("2026-02-15T23:59:59-08:00"); // Feb 15 PT
+        const targetDate = new Date("2026-02-28T23:59:59-08:00"); // Feb 28 PT
 
         const updateCountdown = () => {
             const now = new Date();
@@ -309,7 +337,9 @@ export default function Home() {
             }).then(async (res) => {
                 if (res.ok) {
                     alert("Credit purchase successful! Your balance has been updated.");
-                    // Refresh session to show new credits
+                    // Instant Credit Update
+                    await update(); // Force session refresh to get new credits
+
                     const event = new Event("visibilitychange");
                     document.dispatchEvent(event);
                     router.refresh();
@@ -318,33 +348,13 @@ export default function Home() {
         }
     }, [router]);
 
-    // Environment Check
-    const isProduction = process.env.NEXT_PUBLIC_IS_PRODUCTION === 'true';
-
-    // Stripe Payment Links (Production)
-    const STRIPE_LINKS: Record<number, string> = {
-        1: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-        20: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-        50: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-        100: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03"
-    };
-
     const handleBuyCredits = async (credits: number, planName: string) => {
         if (!session) {
             router.push(`/auth/signin?callbackUrl=${encodeURIComponent("/")}`);
             return;
         }
 
-        // Production: Redirect to Stripe Payment Link
-        if (isProduction) {
-            const stripeLink = STRIPE_LINKS[credits];
-            if (stripeLink) {
-                window.location.href = stripeLink;
-            } else {
-                alert("Payment link not found for this package.");
-            }
-            return;
-        }
+        // Stripe Checkout API (All Environments)
 
         // Dev/Local: Stripe Checkout API
         try {
@@ -353,11 +363,11 @@ export default function Home() {
             // Determine lookup_key
             let lookupKey = "";
             switch (credits) {
-                case 1: lookupKey = "credit_payg"; break;
+                case 1: lookupKey = "credit_payg19"; break;
                 case 20: lookupKey = "credit_starter"; break;
                 case 50: lookupKey = "credit_basic"; break;
                 case 100: lookupKey = "credit_pro"; break;
-                default: lookupKey = "credit_payg";
+                default: lookupKey = "credit_payg19";
             }
 
             const res = await fetch("/api/checkout", {
@@ -403,12 +413,12 @@ export default function Home() {
             return;
         }
 
-        // User Flow: Check Credits
-        const credits = session.user.credits || 0;
-        if (credits < 1) {
-            setUnlockError("Insufficient credits.");
-            return;
-        }
+        // User Flow: Check Credits (Server handles validation & promotion logic)
+        // const credits = session.user.credits || 0;
+        // if (credits < 1) {
+        //     setUnlockError("Insufficient credits.");
+        //     return;
+        // }
 
         // Remove popup confirmation - unlock immediately
         try {
@@ -538,19 +548,50 @@ export default function Home() {
                         {/* Original */}
                         <div className="relative h-full bg-black/50 group">
                             <div className="absolute top-4 left-4 z-10 bg-black/50 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold uppercase tracking-wider">Original</div>
-                            <Image src={generatedImages.original} alt="Original" fill className="object-contain" />
+                            <Image
+                                src={generatedImages.original}
+                                alt="Original"
+                                fill
+                                className="object-contain"
+                                draggable={false}
+                                onDragStart={(e) => e.preventDefault()}
+                                onContextMenu={(e) => e.preventDefault()}
+                            />
                         </div>
 
                         {/* Basic */}
                         <div className="relative h-full bg-black/50 group">
                             <div className="absolute top-4 left-4 z-10 bg-blue-500/80 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold uppercase tracking-wider">Basic</div>
-                            <Image src={generatedImages.basic} alt="Basic" fill className="object-contain" />
+                            <Image
+                                src={generatedImages.basic}
+                                alt="Basic"
+                                fill
+                                className="object-contain"
+                                draggable={false}
+                                onDragStart={(e) => e.preventDefault()}
+                                onContextMenu={(e) => e.preventDefault()}
+                            />
                             {!generatedImages.isUnlocked && (
-                                <div className="absolute inset-0 z-10 pointer-events-none bg-black/20 overflow-hidden flex flex-col justify-center items-center gap-4">
-                                    <div className="relative w-48 h-12 opacity-50">
-                                        <Image src="/bomee-logo.png" alt="Bomee" fill className="object-contain" />
+                                <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
+                                    <div className="absolute inset-0 flex flex-col justify-between p-0 opacity-40 transform -rotate-12 pointer-events-none select-none overflow-hidden">
+                                        {[...Array(10)].map((_, rowIdx) => (
+                                            <div key={rowIdx} className="flex justify-center gap-4 whitespace-nowrap -ml-20">
+                                                {[...Array(10)].map((_, colIdx) => (
+                                                    <div key={colIdx} className="flex flex-col items-center justify-center shrink-0 w-24">
+                                                        <div className="relative w-16 h-8 mb-0.5">
+                                                            <Image
+                                                                src="/bomee-logo.png"
+                                                                alt="Watermark"
+                                                                fill
+                                                                className="object-contain"
+                                                            />
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-white/60 uppercase tracking-widest leading-none" style={{ textShadow: '0px 1px 2px rgba(0,0,0,0.5)' }}>CrystalReveal</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ))}
                                     </div>
-                                    <span className="text-white text-2xl font-bold opacity-50 uppercase tracking-widest">CrystalReveal</span>
                                 </div>
                             )}
                         </div>
@@ -558,13 +599,36 @@ export default function Home() {
                         {/* Advanced */}
                         <div className="relative h-full bg-black/50 group">
                             <div className="absolute top-4 left-4 z-10 bg-purple-500/80 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold uppercase tracking-wider">Advanced</div>
-                            <Image src={generatedImages.advanced} alt="Advanced" fill className="object-contain" />
+                            <Image
+                                src={generatedImages.advanced}
+                                alt="Advanced"
+                                fill
+                                className="object-contain"
+                                draggable={false}
+                                onDragStart={(e) => e.preventDefault()}
+                                onContextMenu={(e) => e.preventDefault()}
+                            />
                             {!generatedImages.isUnlocked && (
-                                <div className="absolute inset-0 z-10 pointer-events-none bg-black/20 overflow-hidden flex flex-col justify-center items-center gap-4">
-                                    <div className="relative w-48 h-12 opacity-50">
-                                        <Image src="/bomee-logo.png" alt="Bomee" fill className="object-contain" />
+                                <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
+                                    <div className="absolute inset-0 flex flex-col justify-between p-0 opacity-40 transform -rotate-12 pointer-events-none select-none overflow-hidden">
+                                        {[...Array(10)].map((_, rowIdx) => (
+                                            <div key={rowIdx} className="flex justify-center gap-4 whitespace-nowrap -ml-20">
+                                                {[...Array(10)].map((_, colIdx) => (
+                                                    <div key={colIdx} className="flex flex-col items-center justify-center shrink-0 w-24">
+                                                        <div className="relative w-16 h-8 mb-0.5">
+                                                            <Image
+                                                                src="/bomee-logo.png"
+                                                                alt="Watermark"
+                                                                fill
+                                                                className="object-contain"
+                                                            />
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-white/60 uppercase tracking-widest leading-none" style={{ textShadow: '0px 1px 2px rgba(0,0,0,0.5)' }}>CrystalReveal</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ))}
                                     </div>
-                                    <span className="text-white text-2xl font-bold opacity-50 uppercase tracking-widest">CrystalReveal</span>
                                 </div>
                             )}
                         </div>
@@ -583,6 +647,7 @@ export default function Home() {
                         </Link>
                     </div>
                     <div className="flex items-center gap-4">
+                        <LanguageSwitcher currentLocale={locale} />
                         <Link href="/admin" className="p-2 text-gray-500 hover:text-purple-600 transition-colors" title="Admin">
                             <Settings className="w-5 h-5" />
                         </Link>
@@ -632,36 +697,16 @@ export default function Home() {
                     <div className="lg:col-span-3 space-y-6 pt-8">
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-50 border border-purple-100 text-xs font-semibold text-purple-700 shadow-sm">
                             <Sparkles className="w-4 h-4" />
-                            <span>CrystalReveal AI</span>
+                            <span>{t('hero.badge')}</span>
                         </div>
 
                         <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 leading-tight">
-                            The "Perfect Shot" <br />
-                            You Missed <br />
-                            Recreated in 8K.
+                            {t('hero.title').split('\n').map((line, i) => (<span key={i}>{line}<br /></span>))}
                         </h1>
 
                         <p className="text-sm text-gray-600 leading-relaxed">
-                            Transform your blurry ultrasound into a crystal-clear masterpiece. Our AI simulates the clarity of high-end studio equipment, recreating your baby’s face as if it were captured on the luckiest day possible.
-                            <br /><br />
-                            <strong className="text-xl font-extrabold text-purple-700">Limited Time Launch Special: $9.99</strong>
+                            {t('hero.desc')}
                         </p>
-
-                        <div className="flex items-center gap-2 text-sm text-red-500 font-semibold bg-red-50 border border-red-100 py-2 px-4 rounded-lg w-fit animate-pulse">
-                            <Timer className="w-4 h-4" />
-                            <span>Ends in: {timeLeftToPromo} (PST)</span>
-                        </div>
-
-                        <div className="flex flex-col gap-2 pt-2">
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                <span>Free to Generate</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                                <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                                <span>Pay only to Download</span>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Interactive Demo Area - 3 Column Layout */}
@@ -670,10 +715,10 @@ export default function Home() {
 
                             {/* 1. Input Column */}
                             <div className="flex flex-col gap-4">
-                                <div className="text-sm font-bold text-gray-500 uppercase tracking-wider text-center">Original Scan</div>
+                                <div className="text-sm font-bold text-gray-500 uppercase tracking-wider text-center">{t('upload.originalScan')}</div>
                                 <div
                                     className={cn(
-                                        "flex-1 relative group border-2 border-dashed rounded-2xl p-4 transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer overflow-hidden min-h-[300px]",
+                                        "flex-1 relative group border-2 border-dashed rounded-2xl p-4 transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer overflow-hidden h-[400px]",
                                         dragActive ? "border-purple-500 bg-purple-50" : "border-gray-200 hover:border-purple-300",
                                         preview ? "border-solid border-purple-200 bg-white" : "bg-gray-50"
                                     )}
@@ -697,23 +742,23 @@ export default function Home() {
                                         <div className="relative w-full h-full rounded-xl overflow-hidden z-10">
                                             <Image src={preview} alt="Original" fill className="object-contain" />
                                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                <p className="text-white font-medium text-sm">Change Image</p>
+                                                <p className="text-white font-medium text-sm">{t('upload.changeImage')}</p>
                                             </div>
                                         </div>
                                     ) : (
                                         <div className="space-y-3 relative z-10">
                                             <div className="w-12 h-12 rounded-full bg-white/80 backdrop-blur-sm shadow-sm flex items-center justify-center mx-auto text-purple-600"><Upload className="w-6 h-6" /></div>
-                                            <p className="text-sm font-semibold text-gray-900 bg-white/50 backdrop-blur-sm px-3 py-1 rounded-full">Upload Scan</p>
+                                            <p className="text-sm font-semibold text-gray-900 bg-white/50 backdrop-blur-sm px-3 py-1 rounded-full">{t('upload.uploadScan')}</p>
                                         </div>
                                     )}
                                 </div>
                                 <label className="flex items-start gap-2 cursor-pointer group px-1">
                                     <input type="checkbox" checked={tosAgreed} onChange={(e) => setTosAgreed(e.target.checked)} className="mt-1 peer h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-600" />
                                     <span className="text-[10px] text-gray-500 leading-tight">
-                                        I agree this is for entertainment only and accept the <a href="/terms" className="underline hover:text-purple-600" target="_blank">Terms & Privacy</a>.
+                                        {t('upload.tosAgree')} <a href="/terms" className="underline hover:text-purple-600" target="_blank">{t('upload.termsPrivacy')}</a>.
                                     </span>
                                 </label>
-                                <p className="text-[10px] text-gray-400 ml-7 mt-0.5">Inputs help improve AI accuracy.</p>
+                                <p className="text-[10px] text-gray-400 ml-7 mt-0.5">{t('upload.inputsHelp')}</p>
                                 <button
                                     onClick={handleSubmit}
                                     disabled={loading || !file || !tosAgreed}
@@ -722,54 +767,51 @@ export default function Home() {
                                     {loading ? (
                                         <>
                                             <Loader2 className="w-4 h-4 animate-spin" />
-                                            <span>{timeLeft > 0 ? `Generating... ${timeLeft}s` : "Finalizing..."}</span>
+                                            <span>{timeLeft > 0 ? t('upload.generating', { seconds: timeLeft }) : t('upload.finalizing')}</span>
                                         </>
                                     ) : generatedImages ? (
-                                        <> <RefreshCcw className="w-4 h-4" /> <span>Regenerate (FREE)</span> </>
+                                        <> <RefreshCcw className="w-4 h-4" /> <span>{t('upload.regenerate')}</span> </>
                                     ) : (
-                                        <> <span>Generate</span> <Sparkles className="w-4 h-4 text-purple-300" /> </>
+                                        <> <span>{t('upload.freeGenerate')}</span> <Sparkles className="w-4 h-4 text-purple-300" /> </>
                                     )}
                                 </button>
                             </div>
 
                             {/* 2. Basic Result */}
                             <div className="flex flex-col gap-4">
-                                <div className="text-sm font-bold text-gray-500 tracking-wider text-center">CrystalReveal™ Basic</div>
-                                <div className="flex-1 bg-white rounded-2xl border border-gray-100 relative overflow-hidden min-h-[300px]">
+                                <div className="text-sm font-bold text-gray-500 tracking-wider text-center">{t('results.basic')}</div>
+                                <div className="flex-1 bg-white rounded-2xl border border-gray-100 relative overflow-hidden h-[400px]">
                                     {generatedImages ? (
-                                        <div className="relative w-full h-full bg-black group">
-                                            <Image src={generatedImages.basic} alt="Basic" fill className="object-contain" />
+                                        <div className="relative w-full h-full bg-black group" onContextMenu={(e) => !generatedImages?.isUnlocked && e.preventDefault()} onDragStart={(e) => !generatedImages?.isUnlocked && e.preventDefault()}>
+                                            <Image src={generatedImages.basic} alt="Basic" fill className={`object-contain ${!generatedImages.isUnlocked ? 'pointer-events-none select-none' : ''}`} draggable={generatedImages.isUnlocked ? undefined : false} onDragStart={(e) => !generatedImages.isUnlocked && e.preventDefault()} />
                                             {!generatedImages.isUnlocked && (
                                                 <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
-                                                    {/* Diagonal repeating watermark pattern */}
-                                                    <div className="absolute inset-0" style={{
-                                                        backgroundImage: `repeating-linear-gradient(
-                                                            45deg,
-                                                            transparent,
-                                                            transparent 150px,
-                                                            rgba(255,255,255,0.03) 150px,
-                                                            rgba(255,255,255,0.03) 151px
-                                                        )`,
-                                                    }}>
-                                                        {[...Array(20)].map((_, i) => (
-                                                            <div
-                                                                key={i}
-                                                                className="absolute text-white/20 font-bold text-xl uppercase tracking-widest whitespace-nowrap"
-                                                                style={{
-                                                                    transform: `rotate(-45deg) translate(${(i % 4) * 250}px, ${Math.floor(i / 4) * 200 - 200}px)`,
-                                                                    left: '-10%',
-                                                                    top: `${(i % 4) * 25}%`,
-                                                                }}
-                                                            >
-                                                                CrystalReveal
+                                                    {/* Dense repeating logo watermark */}
+                                                    {/* Dense repeating logo watermark - Louis Vuitton Style */}
+                                                    <div className="absolute inset-0 flex flex-col justify-between p-4 opacity-30 transform -rotate-12 pointer-events-none select-none overflow-hidden">
+                                                        {[...Array(5)].map((_, rowIdx) => (
+                                                            <div key={rowIdx} className="flex justify-center gap-8 whitespace-nowrap">
+                                                                {[...Array(6)].map((_, colIdx) => (
+                                                                    <div key={colIdx} className="flex flex-col items-center justify-center shrink-0 w-32">
+                                                                        <div className="relative w-20 h-10 mb-1 grayscale brightness-200">
+                                                                            <Image
+                                                                                src="/bomee-logo.png"
+                                                                                alt="Watermark"
+                                                                                fill
+                                                                                className="object-contain"
+                                                                            />
+                                                                        </div>
+                                                                        <span className="text-[14px] font-black text-white/50 uppercase tracking-widest">CrystalReveal</span>
+                                                                    </div>
+                                                                ))}
                                                             </div>
                                                         ))}
                                                     </div>
                                                 </div>
                                             )}
-                                            {/* Hover Download Button (Only if Unlocked) */}
+                                            {/* Top Right Download Button (Only if Unlocked) */}
                                             {generatedImages.isUnlocked && (
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                                                <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={async () => {
                                                             try {
@@ -787,9 +829,10 @@ export default function Home() {
                                                                 console.error('Download failed:', error);
                                                             }
                                                         }}
-                                                        className="p-4 bg-white rounded-full text-gray-900 hover:bg-gray-100 transition-colors shadow-lg"
+                                                        className="p-3 bg-white/90 backdrop-blur-md hover:bg-white text-gray-900 rounded-full shadow-lg transition-all transform hover:scale-105"
+                                                        title="Download Image"
                                                     >
-                                                        <Download className="w-6 h-6" />
+                                                        <Download className="w-5 h-5" />
                                                     </button>
                                                 </div>
                                             )}
@@ -804,18 +847,18 @@ export default function Home() {
 
                                             <div className="absolute inset-0 flex items-center justify-center text-center p-6 z-10">
                                                 <div className="bg-white/60 backdrop-blur-md p-4 rounded-xl shadow-sm border border-white/50">
-                                                    <p className="text-sm text-gray-600 font-medium">Standard Clarity<br /><span className="text-xs text-gray-500">Result will appear here</span></p>
+                                                    <p className="text-sm text-gray-600 font-medium">{t('results.standardClarity')}<br /><span className="text-xs text-gray-500">{t('results.resultHere')}</span></p>
                                                 </div>
                                             </div>
                                         </>
                                     )}
                                 </div>
                                 <p className="text-[10px] text-gray-500 leading-tight px-1 min-h-[2.5rem]">
-                                    Basic Filter preserves the original ultrasound integrity while removing obstructions.
+                                    {t('results.basicDesc')}
                                 </p>
                                 {generatedImages && (
                                     <div className="flex flex-col items-center gap-2">
-                                        <span className="text-xs font-medium text-gray-600">How do you like this result?</span>
+                                        <span className="text-xs font-medium text-gray-600">{t('results.rateResult')}</span>
                                         <div className="flex gap-1" onMouseLeave={() => setHoveredRating(prev => ({ ...prev, basic: 0 }))}>
                                             {[1, 2, 3, 4, 5].map(s => (
                                                 <button
@@ -834,42 +877,38 @@ export default function Home() {
 
                             {/* 3. Advanced Result */}
                             <div className="flex flex-col gap-4">
-                                <div className="text-sm font-bold text-gray-500 tracking-wider text-center">CrystalReveal™ Advanced</div>
-                                <div className="flex-1 bg-white rounded-2xl border border-gray-100 relative overflow-hidden min-h-[300px]">
+                                <div className="text-sm font-bold text-gray-500 tracking-wider text-center">{t('results.advanced')}</div>
+                                <div className="flex-1 bg-white rounded-2xl border border-gray-100 relative overflow-hidden h-[400px]">
                                     {generatedImages ? (
-                                        <div className="relative w-full h-full bg-black group">
-                                            <Image src={generatedImages.advanced} alt="Advanced" fill className="object-contain" />
+                                        <div className="relative w-full h-full bg-black group" onContextMenu={(e) => !generatedImages?.isUnlocked && e.preventDefault()} onDragStart={(e) => !generatedImages?.isUnlocked && e.preventDefault()}>
+                                            <Image src={generatedImages.advanced} alt="Advanced" fill className={`object-contain ${!generatedImages.isUnlocked ? 'pointer-events-none select-none' : ''}`} draggable={generatedImages.isUnlocked ? undefined : false} onDragStart={(e) => !generatedImages.isUnlocked && e.preventDefault()} />
                                             {!generatedImages.isUnlocked && (
                                                 <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
-                                                    {/* Diagonal repeating watermark pattern */}
-                                                    <div className="absolute inset-0" style={{
-                                                        backgroundImage: `repeating-linear-gradient(
-                                                            45deg,
-                                                            transparent,
-                                                            transparent 150px,
-                                                            rgba(255,255,255,0.03) 150px,
-                                                            rgba(255,255,255,0.03) 151px
-                                                        )`,
-                                                    }}>
-                                                        {[...Array(20)].map((_, i) => (
-                                                            <div
-                                                                key={i}
-                                                                className="absolute text-white/20 font-bold text-xl uppercase tracking-widest whitespace-nowrap"
-                                                                style={{
-                                                                    transform: `rotate(-45deg) translate(${(i % 4) * 250}px, ${Math.floor(i / 4) * 200 - 200}px)`,
-                                                                    left: '-10%',
-                                                                    top: `${(i % 4) * 25}%`,
-                                                                }}
-                                                            >
-                                                                CrystalReveal
+                                                    {/* Dense repeating logo watermark */}
+                                                    <div className="absolute inset-0 flex flex-col justify-between p-0 opacity-40 transform -rotate-12 pointer-events-none select-none overflow-hidden">
+                                                        {[...Array(10)].map((_, rowIdx) => (
+                                                            <div key={rowIdx} className="flex justify-center gap-4 whitespace-nowrap -ml-20">
+                                                                {[...Array(10)].map((_, colIdx) => (
+                                                                    <div key={colIdx} className="flex flex-col items-center justify-center shrink-0 w-24">
+                                                                        <div className="relative w-16 h-8 mb-0.5">
+                                                                            <Image
+                                                                                src="/bomee-logo.png"
+                                                                                alt="Watermark"
+                                                                                fill
+                                                                                className="object-contain"
+                                                                            />
+                                                                        </div>
+                                                                        <span className="text-[10px] font-black text-white/60 uppercase tracking-widest leading-none" style={{ textShadow: '0px 1px 2px rgba(0,0,0,0.5)' }}>CrystalReveal</span>
+                                                                    </div>
+                                                                ))}
                                                             </div>
                                                         ))}
                                                     </div>
                                                 </div>
                                             )}
-                                            {/* Hover Download Button (Only if Unlocked) */}
+                                            {/* Top Right Download Button (Only if Unlocked) */}
                                             {generatedImages.isUnlocked && (
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                                                <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={async () => {
                                                             try {
@@ -887,9 +926,10 @@ export default function Home() {
                                                                 console.error('Download failed:', error);
                                                             }
                                                         }}
-                                                        className="p-4 bg-white rounded-full text-gray-900 hover:bg-gray-100 transition-colors shadow-lg"
+                                                        className="p-3 bg-white/90 backdrop-blur-md hover:bg-white text-gray-900 rounded-full shadow-lg transition-all transform hover:scale-105"
+                                                        title="Download Image"
                                                     >
-                                                        <Download className="w-6 h-6" />
+                                                        <Download className="w-5 h-5" />
                                                     </button>
                                                 </div>
                                             )}
@@ -904,18 +944,18 @@ export default function Home() {
 
                                             <div className="absolute inset-0 flex items-center justify-center text-center p-6 z-10">
                                                 <div className="bg-white/60 backdrop-blur-md p-4 rounded-xl shadow-sm border border-white/50">
-                                                    <p className="text-sm text-gray-600 font-medium">High-Fidelity AI<br /><span className="text-xs text-gray-500">Result will appear here</span></p>
+                                                    <p className="text-sm text-gray-600 font-medium">{t('results.highFidelity')}<br /><span className="text-xs text-gray-500">{t('results.resultHere')}</span></p>
                                                 </div>
                                             </div>
                                         </>
                                     )}
                                 </div>
                                 <p className="text-[10px] text-gray-500 leading-tight px-1 min-h-[2.5rem]">
-                                    Advanced Filter actively reconstructs realistic skin texture and facial features.
+                                    {t('results.advancedDesc')}
                                 </p>
                                 {generatedImages && (
                                     <div className="flex flex-col items-center gap-2">
-                                        <span className="text-xs font-medium text-gray-600">How do you like this result?</span>
+                                        <span className="text-xs font-medium text-gray-600">{t('results.rateResult')}</span>
                                         <div className="flex gap-1" onMouseLeave={() => setHoveredRating(prev => ({ ...prev, advanced: 0 }))}>
                                             {[1, 2, 3, 4, 5].map(s => (
                                                 <button
@@ -933,12 +973,7 @@ export default function Home() {
 
                                 {/* Download All Button (Aligned with Regenerate Row) */}
                                 {generatedImages && generatedImages.isUnlocked && (
-                                    <button
-                                        onClick={handleDownloadAll}
-                                        className="w-full h-12 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-lg flex items-center justify-center gap-2 transition-all"
-                                    >
-                                        <Download className="w-5 h-5" /> <span>Download All</span>
-                                    </button>
+                                    <div className="h-12"></div>
                                 )}
                             </div>
                         </div>
@@ -952,7 +987,7 @@ export default function Home() {
                                         className="flex-1 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-semibold border border-gray-200 flex items-center justify-center gap-2 transition-all hover:border-gray-300"
                                     >
                                         <Maximize2 className="w-4 h-4" />
-                                        <span className="text-sm">Compare</span>
+                                        <span className="text-sm">{t('results.compare')}</span>
                                     </button>
                                     <button
                                         onClick={handleUnlock}
@@ -960,14 +995,14 @@ export default function Home() {
                                         className="flex-[1.5] py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-md shadow-purple-200 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <Lock className="w-5 h-5" />
-                                        <span>Unlock Result (1 Credit)</span>
+                                        <span>{t('results.unlock')}</span>
                                     </button>
                                 </div>
 
                                 {/* Credit Used Notification */}
                                 {creditUsedNotification && (
                                     <div className="mt-3 text-center bg-green-50 text-green-700 text-sm py-2 px-4 rounded-lg border border-green-200 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-1">
-                                        <span className="font-semibold">✓ 1 Credit Used</span>
+                                        <span className="font-semibold">{t('results.creditUsed')}</span>
                                     </div>
                                 )}
 
@@ -980,7 +1015,7 @@ export default function Home() {
                                                 className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors"
                                             >
                                                 <CreditCard className="w-4 h-4" />
-                                                Go to Pricing
+                                                {t('results.goToPricing')}
                                             </a>
                                         )}
                                     </div>
@@ -997,31 +1032,35 @@ export default function Home() {
                                         className="flex-1 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-semibold border border-gray-200 flex items-center justify-center gap-2 transition-all hover:border-gray-300"
                                     >
                                         <Maximize2 className="w-4 h-4" />
-                                        <span className="text-sm">Compare</span>
+                                        <span className="text-sm">{t('results.compare')}</span>
                                     </button>
                                     <button
                                         onClick={async () => {
-                                            const url = generatedImages.advanced;
-                                            const filename = 'bomee-crystalreveal-advanced.png';
-                                            try {
-                                                const response = await fetch(url);
-                                                const blob = await response.blob();
-                                                const blobUrl = window.URL.createObjectURL(blob);
-                                                const link = document.createElement('a');
-                                                link.href = blobUrl;
-                                                link.download = filename;
-                                                document.body.appendChild(link);
-                                                link.click();
-                                                document.body.removeChild(link);
-                                                window.URL.revokeObjectURL(blobUrl);
-                                            } catch (e) {
-                                                console.error("Download failed", e);
-                                            }
+                                            const downloadImage = async (url: string, suffix: string) => {
+                                                try {
+                                                    const response = await fetch(url);
+                                                    const blob = await response.blob();
+                                                    const blobUrl = window.URL.createObjectURL(blob);
+                                                    const link = document.createElement('a');
+                                                    link.href = blobUrl;
+                                                    link.download = `bomee-crystalreveal-${suffix}.png`;
+                                                    document.body.appendChild(link);
+                                                    link.click();
+                                                    document.body.removeChild(link);
+                                                    window.URL.revokeObjectURL(blobUrl);
+                                                } catch (e) {
+                                                    console.error(`Download failed for ${suffix}`, e);
+                                                }
+                                            };
+
+                                            await downloadImage(generatedImages.basic, 'basic');
+                                            // Small delay to ensure browser handles both
+                                            setTimeout(() => downloadImage(generatedImages.advanced, 'advanced'), 500);
                                         }}
                                         className="flex-[1.5] py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-bold shadow-md shadow-green-200 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02]"
                                     >
                                         <Download className="w-5 h-5" />
-                                        <span>Download</span>
+                                        <span>{t('results.download')}</span>
                                     </button>
                                 </div>
                             </div>
@@ -1040,14 +1079,14 @@ export default function Home() {
                     <div>
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-900/50 border border-purple-800 text-xs font-semibold text-purple-300 mb-6">
                             <Sparkles className="w-4 h-4" />
-                            <span>Why Adopt CrystalReveal</span>
+                            <span>{t('whyAdopt.badge')}</span>
                         </div>
                         <h2 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">
-                            Upgrade Your Output, <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">Not Your Machine.</span>
+                            {t('whyAdopt.title')} <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">{t('whyAdopt.titleHighlight')}</span>
                         </h2>
                         <p className="text-gray-400 text-lg mb-8 leading-relaxed">
-                            Don't spend $100k on new equipment. As an official partner, you gain exclusive access to CrystalReveal™ AI at special partner rates, instantly transforming your standard ultrasound results into 8K masterpieces.
+                            {t('whyAdopt.desc')}
                         </p>
 
                         <div className="space-y-6">
@@ -1056,8 +1095,8 @@ export default function Home() {
                                     <span className="text-2xl">💎</span>
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-white text-lg">Premium Equipment Clarity</h4>
-                                    <p className="text-gray-400 text-sm">Deliver crystal-clear images that rival the latest high-end systems.</p>
+                                    <h4 className="font-bold text-white text-lg">{t('whyAdopt.benefit1Title')}</h4>
+                                    <p className="text-gray-400 text-sm">{t('whyAdopt.benefit1Desc')}</p>
                                 </div>
                             </div>
                             <div className="flex gap-4">
@@ -1065,8 +1104,37 @@ export default function Home() {
                                     <span className="text-2xl">📉</span>
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-white text-lg">Slash Rescan Rates</h4>
-                                    <p className="text-gray-400 text-sm">Save blurry or obstructed shots instantly. Reduce free "rescan" appointments.</p>
+                                    <h4 className="font-bold text-white text-lg">{t('whyAdopt.benefit2Title')}</h4>
+                                    <p className="text-gray-400 text-sm">{t('whyAdopt.benefit2Desc')}</p>
+                                </div>
+                            </div>
+
+
+                            {/* New Process Guide */}
+                            <div className="pt-6 border-t border-white/10 mt-6">
+                                <h4 className="font-bold text-white mb-4 flex items-center gap-2">
+                                    <span className="bg-purple-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">AI</span>
+                                    {t('whyAdopt.howItWorks')}
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                                    <div className="bg-white/5 p-4 rounded-xl border border-white/5 relative">
+                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gray-800 text-xs px-2 py-0.5 rounded-full border border-gray-700">{t('whyAdopt.step1')}</div>
+                                        <Upload className="w-5 h-5 text-gray-400 mx-auto mb-2" />
+                                        <p className="text-sm font-medium text-white">{t('whyAdopt.step1Title')}</p>
+                                        <p className="text-xs text-gray-500 mt-1">{t('whyAdopt.step1Desc')}</p>
+                                    </div>
+                                    <div className="bg-white/5 p-4 rounded-xl border border-white/5 relative">
+                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gray-800 text-xs px-2 py-0.5 rounded-full border border-gray-700">{t('whyAdopt.step2')}</div>
+                                        <Sparkles className="w-5 h-5 text-purple-400 mx-auto mb-2" />
+                                        <p className="text-sm font-medium text-white">{t('whyAdopt.step2Title')}</p>
+                                        <p className="text-xs text-gray-500 mt-1">{t('whyAdopt.step2Desc')}</p>
+                                    </div>
+                                    <div className="bg-white/5 p-4 rounded-xl border border-white/5 relative">
+                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gray-800 text-xs px-2 py-0.5 rounded-full border border-gray-700">{t('whyAdopt.step3')}</div>
+                                        <Lock className="w-5 h-5 text-green-400 mx-auto mb-2" />
+                                        <p className="text-sm font-medium text-white">{t('whyAdopt.step3Title')}</p>
+                                        <p className="text-xs text-gray-500 mt-1">{t('whyAdopt.step3Desc')}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1075,8 +1143,8 @@ export default function Home() {
                         <Image src="/bomee_studio_session.png" alt="Clear Difference" fill className="object-cover opacity-80" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-8">
                             <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/10 w-full">
-                                <p className="text-white font-medium">"My clients are amazed. It looks like I bought a $100k machine."</p>
-                                <p className="text-purple-300 text-sm mt-2">- Sarah J., Studio Owner</p>
+                                <p className="text-white font-medium">{t('whyAdopt.testimonial')}</p>
+                                <p className="text-purple-300 text-sm mt-2">{t('whyAdopt.testimonialAuthor')}</p>
                             </div>
                         </div>
                     </div>
@@ -1088,12 +1156,15 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center mb-16 space-y-4">
                         <div className="inline-block bg-purple-100 text-purple-700 px-4 py-1 rounded-full text-sm font-bold mb-4">
-                            Limited Time Launch Special
+                            {t('pricing.limitedDeal')}
                         </div>
-                        <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">Purchase Credits</h2>
+                        <div className="flex justify-center items-center gap-2 text-sm text-red-500 font-bold bg-red-50 py-1 px-3 rounded-lg w-fit mx-auto mb-2 animate-pulse">
+                            <Timer className="w-4 h-4" />
+                            <span>{t('pricing.promoEnds', { time: timeLeftToPromo })}</span>
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">{t('pricing.title')}</h2>
                         <p className="text-xl text-gray-500 max-w-2xl mx-auto">
-                            Simple, transparent pricing. <br />
-                            Use credits whenever you need a perfect shot.
+                            {t('pricing.subtitle').split('\n').map((line, i) => (<span key={i}>{line}<br /></span>))}
                         </p>
                     </div>
 
@@ -1102,7 +1173,7 @@ export default function Home() {
                             <div key={idx} className={`relative bg-white rounded-3xl p-6 border flex flex-col ${pkg.popular ? "border-purple-500 shadow-xl ring-4 ring-purple-50 z-10" : "border-gray-200 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"}`}>
                                 {pkg.popular && (
                                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-xs font-bold uppercase tracking-widest py-1.5 px-4 rounded-full shadow-lg whitespace-nowrap">
-                                        Best Value
+                                        {t('pricing.bestValue')}
                                     </div>
                                 )}
 
@@ -1111,10 +1182,16 @@ export default function Home() {
                                         <pkg.icon className="w-6 h-6" />
                                     </div>
                                     <h3 className="text-xl font-bold text-gray-900">{pkg.name}</h3>
-                                    <p className="text-gray-500 text-sm mt-1">{pkg.description}</p>
+                                    <p className="text-gray-500 text-sm mt-1 min-h-[48px]">{pkg.description}</p>
 
-                                    <div className="my-6">
-                                        <div className="flex items-baseline gap-1">
+                                    <div className="mt-auto mb-6">
+                                        <div className="flex items-baseline gap-2">
+                                            {/* Force height for alignment even if originalPrice is missing */}
+                                            <div className="h-7 flex items-end">
+                                                {pkg.originalPrice && pkg.originalPrice > pkg.price ? (
+                                                    <span className="text-lg text-gray-400 line-through decoration-red-500 decoration-2">${pkg.originalPrice}</span>
+                                                ) : null}
+                                            </div>
                                             <span className="text-3xl font-extrabold text-gray-900">${pkg.price}</span>
                                         </div>
                                         <p className="text-xs font-semibold text-purple-600 mt-1">{pkg.unitPrice}</p>
@@ -1135,88 +1212,41 @@ export default function Home() {
                                     disabled={loading}
                                     className={`w-full py-3 rounded-xl font-bold text-sm text-center transition-all ${pkg.popular ? "bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200" : "bg-gray-900 hover:bg-gray-800 text-white"} disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
-                                    {loading ? "Processing..." : `Buy ${pkg.credits} Credits`}
+                                    {loading ? t('pricing.processing') : t('pricing.buyCredits', { count: pkg.credits })}
                                 </button>
                             </div>
                         ))}
                     </div>
 
-                    <div className="text-center text-sm text-gray-400">
-                        <p>Credits are valid for up to 1 year from the date of purchase.</p>
+                    <div className="text-center text-sm text-gray-500 mt-4">
+                        <p>
+                            {t('pricing.creditsValid')}
+                            <br />
+                            <span className="text-xs text-gray-400">
+                                {t('pricing.qualityNote')}
+                            </span>
+                        </p>
                     </div>
                 </div>
             </section>
 
             {/* Live Generations (Gallery) */}
-            {gallery.length > 0 && (
-                <section className="py-20 bg-gray-50 border-y border-gray-200">
-                    <div className="max-w-7xl mx-auto px-6">
-                        <div className="text-center mb-12">
-                            <h2 className="text-3xl font-bold text-gray-900 mb-2">Any Device. Every Detail. Perfectly Restored.</h2>
-                            <p className="text-gray-500 max-w-2xl mx-auto text-sm">
-                                See the proof. We transform low-quality, obstructed scans from all ultrasound manufacturers into crystal-clear moments.
-                            </p>
-                        </div>
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {gallery.map((item: any, idx) => (
-                                <div
-                                    key={idx}
-                                    className="bg-white rounded-2xl p-3 shadow-sm hover:shadow-md transition-shadow"
-                                    onError={(e) => {
-                                        // Hide element if image fails
-                                        e.currentTarget.style.display = 'none';
-                                    }}
-                                >
-                                    <div className="grid grid-cols-3 gap-1 h-32">
-                                        <div className="relative rounded overflow-hidden bg-gray-100">
-                                            <Image
-                                                src={item.original || item.before}
-                                                alt="Orig"
-                                                fill
-                                                className="object-cover"
-                                                onError={(e) => {
-                                                    // Hide the entire card if any image fails
-                                                    const card = e.currentTarget.closest('.bg-white') as HTMLElement;
-                                                    if (card) card.style.display = 'none';
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="relative rounded overflow-hidden bg-gray-100">
-                                            <Image
-                                                src={item.basic || item.before}
-                                                alt="Basic"
-                                                fill
-                                                className="object-cover"
-                                                onError={(e) => {
-                                                    const card = e.currentTarget.closest('.bg-white') as HTMLElement;
-                                                    if (card) card.style.display = 'none';
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="relative rounded overflow-hidden bg-purple-50">
-                                            <Image
-                                                src={item.advanced || item.after}
-                                                alt="Adv"
-                                                fill
-                                                className="object-cover"
-                                                onError={(e) => {
-                                                    const card = e.currentTarget.closest('.bg-white') as HTMLElement;
-                                                    if (card) card.style.display = 'none';
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-between text-[10px] text-gray-400 mt-2 px-1">
-                                        <span>Original</span>
-                                        <span>Basic</span>
-                                        <span>Advanced</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+            <section className="py-20 bg-gray-50 border-y border-gray-200">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl font-bold text-gray-900 mb-2">{t('gallery.title')}</h2>
+                        <p className="text-gray-500 max-w-2xl mx-auto text-sm">
+                            {t('gallery.desc')}
+                        </p>
                     </div>
-                </section>
-            )}
+                </div>
+
+                {/* Featured Carousel */}
+                <div className="mt-8">
+                    <FeaturedCarousel />
+                </div>
+
+            </section>
 
             {/* Revenue / Upgrade Section (Moved from Owner Section) */}
             <section className="bg-gradient-to-br from-gray-900 to-black py-24 text-white relative overflow-hidden">
@@ -1228,13 +1258,13 @@ export default function Home() {
                     <div>
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-900/50 border border-purple-800 text-xs font-semibold text-purple-300 mb-6">
                             <Sparkles className="w-4 h-4" />
-                            <span>Why Adopt Bomee Core</span>
+                            <span>{t('studio.badge')}</span>
                         </div>
-                        <h2 className="text-4xl font-extrabold mb-6">Elevate Your Ultrasound Business with Bomee Core</h2>
+                        <h2 className="text-4xl font-extrabold mb-6">{t('studio.title')}</h2>
                         <p className="text-xl text-gray-300 mb-8 max-w-lg">
-                            An essential companion to CrystalReveal.
+
                             <br /><br />
-                            Already trusted by hundreds of top-tier US studios and clinics, Bomee Core is the engine that powers your digital workflow and client loyalty.
+                            {t('studio.desc')}
                         </p>
                         <div className="space-y-4 mb-8">
                             <div className="flex gap-4">
@@ -1242,8 +1272,8 @@ export default function Home() {
                                     <Zap className="w-6 h-6 text-purple-400" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-lg">Effortless Digital Delivery</h3>
-                                    <p className="text-gray-400 text-sm">Replace outdated USBs with instant cloud syncing. Compatible with all major hardware (GE, Samsung, Mindray).</p>
+                                    <h3 className="font-bold text-lg">{t('studio.feature1Title')}</h3>
+                                    <p className="text-gray-400 text-sm">{t('studio.feature1Desc')}</p>
                                 </div>
                             </div>
                             <div className="flex gap-4">
@@ -1251,8 +1281,8 @@ export default function Home() {
                                     <Crown className="w-6 h-6 text-blue-400" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-lg">Exclusive Premium Access</h3>
-                                    <p className="text-gray-400 text-sm">Offer your clients a high-end alternative to paid apps like Flo. Your partnership grants them free access to our premium maternity suite, AI-driven health insights, and community features.</p>
+                                    <h3 className="font-bold text-lg">{t('studio.feature2Title')}</h3>
+                                    <p className="text-gray-400 text-sm">{t('studio.feature2Desc')}</p>
                                 </div>
                             </div>
                             <div className="flex gap-4">
@@ -1260,8 +1290,8 @@ export default function Home() {
                                     <UserIcon className="w-6 h-6 text-green-400" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-lg">The Ultimate Retention Engine</h3>
-                                    <p className="text-gray-400 text-sm">Our smart notifications act as your personal marketing team, reminding clients to book their next Gender Reveal or 4D appointment directly through your portal.</p>
+                                    <h3 className="font-bold text-lg">{t('studio.feature3Title')}</h3>
+                                    <p className="text-gray-400 text-sm">{t('studio.feature3Desc')}</p>
                                 </div>
                             </div>
                         </div>
@@ -1271,7 +1301,7 @@ export default function Home() {
                             target="_blank"
                             className="inline-flex items-center gap-2 bg-purple-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-purple-700 transition-colors shadow-lg shadow-purple-900/20"
                         >
-                            <span>Book a Free Consultation</span>
+                            <span>{t('studio.bookConsultation')}</span>
                             <ArrowRight className="w-5 h-5" />
                         </Link>
                     </div>

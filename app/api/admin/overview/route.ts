@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
@@ -21,10 +23,12 @@ export async function GET(req: NextRequest) {
                 }
             },
             select: {
-                creditsChange: true
+                creditsChange: true,
+                amountPaid: true
             }
         });
         const creditsPurchased = creditTransactions.reduce((sum, tx) => sum + tx.creditsChange, 0);
+        const revenue = creditTransactions.reduce((sum, tx) => sum + Number(tx.amountPaid || 0), 0);
 
         // Images generated in period
         const imagesGenerated = await prisma.imageGeneration.count({
@@ -82,6 +86,7 @@ export async function GET(req: NextRequest) {
                 start: start.toISOString(),
                 end: end.toISOString()
             },
+            revenue,
             creditsPurchased,
             imagesGenerated,
             imagesUnlocked,

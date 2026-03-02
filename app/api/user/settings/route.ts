@@ -13,7 +13,7 @@ export async function PUT(req: Request) {
 
     try {
         const body = await req.json();
-        const { businessName, phoneNumber, website, pregnancyWeeks, monthlyScanVolume } = body;
+        const { businessName, phoneNumber, website, pregnancyWeeks, monthlyScanVolume, marketingAgreed, ownerName, country } = body;
 
         // Add validation logic here if needed
 
@@ -27,6 +27,9 @@ export async function PUT(req: Request) {
                 website,
                 pregnancyWeeks,
                 monthlyScanVolume,
+                marketingAgreed,
+                ownerName,
+                country,
             },
         });
 

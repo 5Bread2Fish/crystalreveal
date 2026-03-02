@@ -5,9 +5,13 @@ import Link from "next/link";
 import { ArrowLeft, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function HelpPage() {
     const { data: session } = useSession();
+    const locale = useLocale();
+    const t = useTranslations('help');
 
     // Contact Form State
     const [contactForm, setContactForm] = useState({ subject: "", message: "", email: "" });
@@ -49,17 +53,20 @@ export default function HelpPage() {
                             <Image src="/bomee-logo.png" alt="Bomee" fill className="object-contain object-left" />
                         </div>
                     </Link>
-                    <Link href="/" className="text-sm font-medium text-gray-600 hover:text-purple-600 flex items-center gap-1">
-                        <ArrowLeft className="w-4 h-4" /> Back to Home
-                    </Link>
+                    <div className="flex items-center gap-4">
+                        <LanguageSwitcher currentLocale={locale} />
+                        <Link href="/" className="text-sm font-medium text-gray-600 hover:text-purple-600 flex items-center gap-1">
+                            <ArrowLeft className="w-4 h-4" /> {t('backHome')}
+                        </Link>
+                    </div>
                 </div>
             </nav>
 
             <div className="flex-1 flex flex-col items-center justify-center p-6">
                 <div className="max-w-2xl w-full bg-white rounded-3xl p-8 border border-gray-200 shadow-xl">
                     <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900">Need Help?</h1>
-                        <p className="text-gray-500 text-sm mt-2">Send us a message and we'll get back to you shortly.</p>
+                        <h1 className="text-3xl font-bold text-gray-900">{t('title')}</h1>
+                        <p className="text-gray-500 text-sm mt-2">{t('subtitle')}</p>
                     </div>
 
                     {contactStatus === "success" ? (
@@ -67,41 +74,41 @@ export default function HelpPage() {
                             <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <CheckCircle2 className="w-8 h-8" />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900">Message Sent!</h3>
-                            <p className="text-gray-500 text-sm mt-2">Thanks for reaching out. Our support team has received your message.</p>
-                            <button onClick={() => setContactStatus("idle")} className="mt-6 text-purple-600 text-sm font-medium hover:underline">Send another message</button>
+                            <h3 className="text-lg font-bold text-gray-900">{t('sent')}</h3>
+                            <p className="text-gray-500 text-sm mt-2">{t('sentDesc')}</p>
+                            <button onClick={() => setContactStatus("idle")} className="mt-6 text-purple-600 text-sm font-medium hover:underline">{t('sendAnother')}</button>
                         </div>
                     ) : (
                         <form onSubmit={handleContactSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Your Email</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('yourEmail')}</label>
                                 <input
                                     type="email"
                                     required
                                     className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                                    placeholder="your@email.com"
+                                    placeholder={t('emailPlaceholder')}
                                     value={contactForm.email}
                                     onChange={e => setContactForm({ ...contactForm, email: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('subject')}</label>
                                 <input
                                     type="text"
                                     required
                                     className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                                    placeholder="e.g. Billing Issue"
+                                    placeholder={t('subjectPlaceholder')}
                                     value={contactForm.subject}
                                     onChange={e => setContactForm({ ...contactForm, subject: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('message')}</label>
                                 <textarea
                                     required
                                     rows={5}
                                     className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all resize-none"
-                                    placeholder="How can we help you?"
+                                    placeholder={t('messagePlaceholder')}
                                     value={contactForm.message}
                                     onChange={e => setContactForm({ ...contactForm, message: e.target.value })}
                                 />
@@ -110,7 +117,7 @@ export default function HelpPage() {
                             {contactStatus === "error" && (
                                 <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg">
                                     <AlertCircle className="w-4 h-4" />
-                                    <span>Failed to send message. Please try again.</span>
+                                    <span>{t('failed')}</span>
                                 </div>
                             )}
 
@@ -119,7 +126,7 @@ export default function HelpPage() {
                                 disabled={contactStatus === "sending"}
                                 className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                             >
-                                {contactStatus === "sending" ? "Sending..." : <> <Send className="w-4 h-4" /> Send Message </>}
+                                {contactStatus === "sending" ? t('sending') : <> <Send className="w-4 h-4" /> {t('sendButton')} </>}
                             </button>
                         </form>
                     )}

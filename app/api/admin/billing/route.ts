@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
@@ -11,8 +13,19 @@ export async function GET(req: NextRequest) {
 
         const skip = (page - 1) * limit;
 
+
+        const startDate = searchParams.get("startDate");
+        const endDate = searchParams.get("endDate");
+
         // Build where clause
         let where: any = {};
+
+        if (startDate && endDate) {
+            where.createdAt = {
+                gte: new Date(startDate),
+                lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+            };
+        }
         if (search && value) {
             switch (search) {
                 case "email":

@@ -199,6 +199,9 @@ export async function POST(req: NextRequest) {
                     basicUrl: basicBlob.url,
                     advancedUrl: advancedBlob.url,
                     unlocked: false,
+                    ip: ip,
+                    country: country,
+                    city: req.headers.get("x-vercel-ip-city") || "unknown"
                 }
             });
         } catch (e) {
@@ -210,7 +213,10 @@ export async function POST(req: NextRequest) {
             id: requestId,
             basic: basicBlob.url,
             advanced: advancedBlob.url,
-            isUnlocked: false
+            original: originalBlob.url,
+            isUnlocked: false,
+            // Debug info
+            geo: { ip, country, city: req.headers.get("x-vercel-ip-city") }
         });
 
     } catch (error: any) {

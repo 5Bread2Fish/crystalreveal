@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic';
+
 // This API endpoint should be called by a cron job (e.g., Vercel Cron)
 // to automatically expire credits after 1 year
 export async function GET(req: Request) {

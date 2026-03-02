@@ -6,22 +6,16 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { Check, Sparkles, Zap, Crown, User, HelpCircle, LogOut } from "lucide-react";
 import Image from "next/image";
+import { useLocale, useTranslations } from "next-intl";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function PricingPage() {
     const { data: session } = useSession();
     const [loading, setLoading] = useState(false);
     const router = useRouter();
-
-    // Environment Check
-    const isProduction = process.env.NEXT_PUBLIC_IS_PRODUCTION === 'true';
-
-    // Stripe Payment Links (Production)
-    const STRIPE_LINKS: Record<number, string> = {
-        1: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-        20: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-        50: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-        100: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03"
-    };
+    const locale = useLocale();
+    const t = useTranslations();
+    const tP = useTranslations('pricing');
 
     const handleBuyCredits = async (credits: number, planName: string) => {
         if (!session) {
@@ -29,16 +23,7 @@ export default function PricingPage() {
             return;
         }
 
-        // Production: Redirect to Stripe Payment Link
-        if (isProduction) {
-            const stripeLink = STRIPE_LINKS[credits];
-            if (stripeLink) {
-                window.location.href = stripeLink;
-            } else {
-                alert("Payment link not found for this package.");
-            }
-            return;
-        }
+        // Stripe Checkout API (All Environments)
 
         // Dev/Local: Stripe Checkout API
         try {
@@ -47,11 +32,11 @@ export default function PricingPage() {
             // Determine lookup_key
             let lookupKey = "";
             switch (credits) {
-                case 1: lookupKey = "credit_payg"; break;
+                case 1: lookupKey = "credit_payg19"; break;
                 case 20: lookupKey = "credit_starter"; break;
                 case 50: lookupKey = "credit_basic"; break;
                 case 100: lookupKey = "credit_pro"; break;
-                default: lookupKey = "credit_payg";
+                default: lookupKey = "credit_payg19";
             }
 
             const res = await fetch("/api/checkout", {
@@ -95,9 +80,9 @@ export default function PricingPage() {
             name: "Starter",
             description: "Perfect for a single session.",
             icon: Zap,
-            features: ["20 High-Quality Images", "Instant 8K Upgrade"],
+            features: ["10 High-Quality Images", "Instant 8K Upgrade"],
             link: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-            unitPrice: "$4.95/generation"
+            unitPrice: "$9.99/generation"
         },
         {
             credits: 50,
@@ -105,9 +90,9 @@ export default function PricingPage() {
             name: "Basic",
             description: "Great for regular visits.",
             icon: User,
-            features: ["50 High-Quality Images", "Instant 8K Upgrade"],
+            features: ["25 High-Quality Images", "Instant 8K Upgrade"],
             link: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-            unitPrice: "$3.98/generation"
+            unitPrice: "$7.99/generation"
         },
         {
             credits: 100,
@@ -116,9 +101,9 @@ export default function PricingPage() {
             description: "Best choice for frequent users.",
             icon: Crown,
             popular: true,
-            features: ["100 High-Quality Images", "Instant 8K Upgrade"],
+            features: ["50 High-Quality Images", "Instant 8K Upgrade"],
             link: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-            unitPrice: "$2.99/generation"
+            unitPrice: "$5.99/generation"
         }
     ];
 
@@ -135,13 +120,14 @@ export default function PricingPage() {
                         </Link>
                     </div>
                     <div className="flex items-center gap-4">
+                        <LanguageSwitcher currentLocale={locale} />
                         <Link href="/help" className="p-2 text-gray-500 hover:text-purple-600 transition-colors" title="Need Help?">
                             <HelpCircle className="w-5 h-5" />
                         </Link>
                         {session ? (
                             <div className="flex items-center gap-4">
                                 <div className="text-sm font-medium text-purple-600 bg-purple-50 px-3 py-1.5 rounded-full border border-purple-100">
-                                    {session.user.credits} Credits Available
+                                    {session.user.credits} {t('nav.credits', { count: '' })}
                                 </div>
                                 <div className="relative group">
                                     <button className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-purple-600">
@@ -149,17 +135,17 @@ export default function PricingPage() {
                                         <span>{session.user.email?.split('@')[0]}</span>
                                     </button>
                                     <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-2 z-50">
-                                        <Link href="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">Dashboard</Link>
-                                        <Link href="/pricing" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">Buy Credits</Link>
+                                        <Link href="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">{t('nav.dashboard')}</Link>
+                                        <Link href="/pricing" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg">{t('nav.buyCredits')}</Link>
                                         {/* Admin Link Removed */}
                                         <button onClick={() => signOut({ callbackUrl: '/' })} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2">
-                                            <LogOut className="w-4 h-4" /> Sign Out
+                                            <LogOut className="w-4 h-4" /> {t('nav.signOut')}
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         ) : (
-                            <Link href="/auth/signin" className="text-sm font-medium text-gray-600 hover:text-purple-600">Sign In</Link>
+                            <Link href="/auth/signin" className="text-sm font-medium text-gray-600 hover:text-purple-600">{t('nav.signIn')}</Link>
                         )}
                     </div>
                 </div>
@@ -167,10 +153,9 @@ export default function PricingPage() {
 
             <div className="pt-32 pb-20 px-6 max-w-7xl mx-auto">
                 <div className="text-center mb-16 space-y-4">
-                    <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900">Purchase Credits</h1>
+                    <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900">{tP('title')}</h1>
                     <p className="text-xl text-gray-500 max-w-2xl mx-auto">
-                        Simple, transparent pricing. <br />
-                        Use credits whenever you need a perfect shot.
+                        {tP('subtitle').split('\n').map((line, i) => (<span key={i}>{line}<br /></span>))}
                     </p>
                 </div>
 
@@ -179,7 +164,7 @@ export default function PricingPage() {
                         <div key={idx} className={`relative bg-white rounded-3xl p-6 border flex flex-col ${pkg.popular ? "border-purple-500 shadow-xl ring-4 ring-purple-50 z-10" : "border-gray-200 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"}`}>
                             {pkg.popular && (
                                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-xs font-bold uppercase tracking-widest py-1.5 px-4 rounded-full shadow-lg whitespace-nowrap">
-                                    Best Value
+                                    {tP('bestValue')}
                                 </div>
                             )}
 
@@ -211,14 +196,14 @@ export default function PricingPage() {
                                 onClick={() => handleBuyCredits(pkg.credits, pkg.name)}
                                 className={`w-full py-3 rounded-xl font-bold text-sm text-center transition-all ${pkg.popular ? "bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200" : "bg-gray-900 hover:bg-gray-800 text-white"}`}
                             >
-                                Buy {pkg.credits} Credits
+                                Buy {pkg.credits} {t('nav.credits', { count: '' })}
                             </button>
                         </div>
                     ))}
                 </div>
 
                 <div className="text-center text-sm text-gray-400 pb-20">
-                    <p>Credits are valid for up to 1 year from the date of purchase.</p>
+                    <p>{tP('creditsValid')}</p>
                 </div>
             </div>
         </div>

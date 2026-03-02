@@ -54,7 +54,7 @@ export async function POST(req: Request) {
         }
 
         const emailResult = await resend.emails.send({
-            from: 'noreply@send.humanscape.io',
+            from: 'us_help@humanscape.io',
             to: 'us_help@humanscape.io',
             replyTo: email,
             subject: `[CrystalReveal Help] ${subject}`,

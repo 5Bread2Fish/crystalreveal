@@ -53,14 +53,30 @@ export default function TermsPage() {
                     </section>
 
                     <section className="space-y-3">
-                        <h2 className="text-xl font-bold text-gray-900">5. Privacy & California Residents</h2>
+                        <h2 className="text-xl font-bold text-gray-900">5. User Content & Licensing (Global Marketing Rights)</h2>
                         <p>
-                            We collect and process your uploaded images solely to provide the restoration service and strictly for the research purposes stated above. We do not sell your personal information or biometric data to third parties. If you wish to request the deletion of your data from our servers, please contact us at the email below.
+                            By uploading any content (including ultrasound images) to Bomee, you grant Humanscape US Inc. and its affiliates a <strong>non-exclusive, worldwide, royalty-free, perpetual, and irrevocable license</strong> to use, reproduce, modify, adapt, publish, translate, distribute, and display such content (and any AI-generated derivatives) for marketing, promotional, and research purposes.
+                        </p>
+                        <p>
+                            You represent and warrant that you own or have the necessary rights to grant this license. We acknowledge the sensitivity of this data and agree to <strong>de-identify or anonymize</strong> personal information where required by applicable laws (such as GDPR or CCPA) before using it for public marketing.
                         </p>
                     </section>
 
                     <section className="space-y-3">
-                        <h2 className="text-xl font-bold text-gray-900">6. Data Retention & Use of Anonymized Data</h2>
+                        <h2 className="text-xl font-bold text-gray-900">6. Privacy & California Residents</h2>
+                        <p>
+                            We collect and process your uploaded images solely to provide the restoration service and strictly for the research purposes stated above. We do not sell your personal information or biometric data to third parties. If you wish to request the deletion of your data from our servers, please contact us at the email below.
+                        </p>
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                            <h3 className="font-bold text-gray-900 mb-2">5.1 Data Collection for Security & Marketing</h3>
+                            <p className="text-sm">
+                                We collect your <strong>IP address and access location</strong> to ensure the security of our service, prevent fraud, and improve service quality. Additionally, this data may be used for marketing purposes to provide you with relevant offers and updates. By using our service, you consent to this collection and usage.
+                            </p>
+                        </div>
+                    </section>
+
+                    <section className="space-y-3">
+                        <h2 className="text-xl font-bold text-gray-900">7. Data Retention & Use of Anonymized Data</h2>
                         <p>
                             We retain your uploaded images and generated results for a limited period to provide our services and improve our AI models. After account deletion or upon your request, all personally identifiable data will be removed from our active systems.
                         </p>

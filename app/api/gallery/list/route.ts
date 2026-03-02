@@ -7,6 +7,8 @@ export async function GET() {
         // We only want metadata files to determine entry existence + hidden status
         // Strict filtering: OLD gallery items are ignored as requested because they don't have 'originalUrl'.
         const { blobs } = await list({ prefix: "history/", limit: 1000 });
+        console.log(`[Gallery Debug] Found ${blobs.length} blobs in history/`);
+
 
         const metaBlobs = blobs
             .filter(b => b.pathname.endsWith('_metadata.json'))
@@ -35,6 +37,8 @@ export async function GET() {
         }));
 
         const gallery = items.filter(i => i !== null).slice(0, 30);
+        console.log(`[Gallery Debug] Returning ${gallery.length} valid gallery items`);
+
 
         return NextResponse.json({ gallery: gallery });
 

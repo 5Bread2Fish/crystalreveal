@@ -44,7 +44,7 @@ export async function GET(
 // Update user details
 export async function PATCH(
     req: NextRequest,
-    { params }: { params: { userId: string } }
+    { params }: { params: { id: string } }
 ) {
     try {
         const body = await req.json();
@@ -58,11 +58,15 @@ export async function PATCH(
         if (businessName !== undefined) updateData.businessName = businessName;
 
         if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+        if (body.ownerName !== undefined) updateData.ownerName = body.ownerName;
+        if (body.website !== undefined) updateData.website = body.website;
+        if (body.monthlyScanVolume !== undefined) updateData.monthlyScanVolume = body.monthlyScanVolume;
+        if (body.country !== undefined) updateData.country = body.country;
         // Allow status update (active, deleted, suspended)
         if (body.status) updateData.status = body.status;
 
         const user = await prisma.user.update({
-            where: { id: params.userId },
+            where: { id: params.id },
             data: updateData,
             select: {
                 id: true,

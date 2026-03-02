@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
+import { stripe } from "@/lib/stripe";
 
 export const dynamic = 'force-dynamic';
 
 // 1. Lookup Key Mapping Table (Constant)
 const LOOKUP_KEY_MAPPING: Record<string, string> = {
-    "1": "credit_payg",
+    "1": "credit_payg19",
     "20": "credit_starter",
     "50": "credit_basic",
     "100": "credit_pro"
@@ -13,14 +13,11 @@ const LOOKUP_KEY_MAPPING: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
     try {
-        const stripeKey = process.env.STRIPE_SECRET_KEY;
-        if (!stripeKey) {
+        if (!process.env.STRIPE_SECRET_KEY) {
             console.error("Stripe key is missing");
             return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
         }
-        const stripe = new Stripe(stripeKey, {
-            typescript: true,
-        });
+
 
         const body = await req.json();
         const { credits, planName, userId, lookup_key } = body;
@@ -77,7 +74,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ sessionId: session.id, url: session.url });
 
     } catch (err: any) {
-        console.error("Stripe Error:", err);
+        console.error("Stripe Checkout Error:", err);
         return NextResponse.json(
             { error: err.message || "Internal Server Error" },
             { status: 500 }

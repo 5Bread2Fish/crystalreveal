@@ -25,6 +25,8 @@ model User {
   monthlyScanVolume String?
   website           String?
   country           String?
+  city              String?    // Added for geolocation
+  ipAddress         String?    // Added for geolocation
   marketingAgreed   Boolean  @default(true)
   marketingAgreedAt DateTime?
   status            String   @default("active") // active, deleted
@@ -49,8 +51,10 @@ model ImageGeneration {
   unlockedAt      DateTime?
   ip              String?
   country         String?
+  city            String?  // Added for geolocation
   basicRating     Int?     // 1-5 stars
   advancedRating  Int?     // 1-5 stars
+  isFeatured      Boolean  @default(false)
   createdAt       DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])

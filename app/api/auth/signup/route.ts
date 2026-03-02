@@ -34,6 +34,11 @@ export async function POST(req: Request) {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
+
+        const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip");
+        const detectedCountry = req.headers.get("x-vercel-ip-country");
+        const detectedCity = req.headers.get("x-vercel-ip-city");
+
         const user = await prisma.user.create({
             data: {
                 email,
@@ -47,7 +52,11 @@ export async function POST(req: Request) {
                 pregnancyWeeks,
                 marketingAgreed: marketingAgreed ?? true,
                 marketingAgreedAt: marketingAgreed ? new Date() : null,
-                credits: 0, // Start with 0 credits
+                credits: 0,
+                // Geolocation fields
+                ipAddress: ipAddress ? (Array.isArray(ipAddress) ? ipAddress[0] : ipAddress.split(',')[0]) : null,
+                country: body.country || detectedCountry, // Use body country if provided, else detected
+                city: detectedCity,
             },
         });
 

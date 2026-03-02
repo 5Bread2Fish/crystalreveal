@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Loader2, ArrowRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 function SignInContent() {
     const router = useRouter();
@@ -15,6 +16,7 @@ function SignInContent() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const t = useTranslations('auth');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,7 +30,7 @@ function SignInContent() {
         });
 
         if (res?.error) {
-            setError("Invalid email or password");
+            setError(t('invalidCredentials'));
             setLoading(false);
         } else {
             router.push(callbackUrl);
@@ -46,9 +48,9 @@ function SignInContent() {
 
             <div className="w-full max-w-md space-y-8">
                 <div className="text-center">
-                    <h2 className="text-3xl font-extrabold text-gray-900">Sign in to your account</h2>
+                    <h2 className="text-3xl font-extrabold text-gray-900">{t('signInTitle')}</h2>
                     <p className="mt-2 text-sm text-gray-600">
-                        Or <Link href={`/auth/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`} className="font-medium text-purple-600 hover:text-purple-500">create a new account</Link>
+                        {t('signInOr')} <Link href={`/auth/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`} className="font-medium text-purple-600 hover:text-purple-500">{t('createAccount')}</Link>
                     </p>
                 </div>
 
@@ -59,7 +61,7 @@ function SignInContent() {
                                 type="email"
                                 required
                                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm"
-                                placeholder="Email address"
+                                placeholder={t('email')}
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                             />
@@ -69,7 +71,7 @@ function SignInContent() {
                                 type="password"
                                 required
                                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm"
-                                placeholder="Password"
+                                placeholder={t('password')}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
@@ -84,7 +86,7 @@ function SignInContent() {
                             disabled={loading}
                             className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
                         >
-                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign in"}
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('signInButton')}
                         </button>
                     </div>
                 </form>

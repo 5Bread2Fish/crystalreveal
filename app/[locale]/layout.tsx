@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
+import "../globals.css";
 
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -13,30 +16,35 @@ export const metadata: Metadata = {
 
 import { Providers } from "@/components/Providers";
 
-export default function RootLayout({
+export default async function RootLayout({
     children,
+    params: { locale }
 }: Readonly<{
     children: React.ReactNode;
+    params: { locale: string };
 }>) {
+    const messages = await getMessages();
+
     return (
-        <html lang="en">
+        <html lang={locale}>
             <body className={`${inter.variable} font-sans antialiased min-h-screen bg-slate-50 text-slate-900`}>
-                <Providers>
-                    <Script
-                        src="https://www.googletagmanager.com/gtag/js?id=AW-17535143678"
-                        strategy="afterInteractive"
-                    />
-                    <Script id="google-analytics" strategy="afterInteractive">
-                        {`
+                <NextIntlClientProvider messages={messages}>
+                    <Providers>
+                        <Script
+                            src="https://www.googletagmanager.com/gtag/js?id=AW-17535143678"
+                            strategy="afterInteractive"
+                        />
+                        <Script id="google-analytics" strategy="afterInteractive">
+                            {`
                           window.dataLayer = window.dataLayer || [];
                           function gtag(){dataLayer.push(arguments);}
                           gtag('js', new Date());
                         
                           gtag('config', 'AW-17535143678');
                         `}
-                    </Script>
-                    <Script id="google-ads-conversion" strategy="afterInteractive">
-                        {`
+                        </Script>
+                        <Script id="google-ads-conversion" strategy="afterInteractive">
+                            {`
                           function gtag_report_conversion(url) {
                             var callback = function () {
                               if (typeof(url) != 'undefined') {
@@ -53,9 +61,11 @@ export default function RootLayout({
                             return false;
                           }
                         `}
-                    </Script>
-                    {children}
-                </Providers>
+                        </Script>
+                        {children}
+                        <Analytics />
+                    </Providers>
+                </NextIntlClientProvider>
             </body>
         </html>
     );

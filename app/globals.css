@@ -33,3 +33,12 @@ body {
 .animate-scroll {
   animation: scroll 30s linear infinite;
 }
+
+/* Prevent image drag-and-drop theft */
+img {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}

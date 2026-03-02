@@ -3,6 +3,18 @@
         {
             "path": "/api/cron/expire-credits",
             "schedule": "0 0 * * *"
+        },
+        {
+            "path": "/api/cron/slack-report?period=daily",
+            "schedule": "59 7 * * *"
+        },
+        {
+            "path": "/api/cron/slack-report?period=weekly",
+            "schedule": "59 7 * * 1"
+        },
+        {
+            "path": "/api/cron/slack-report?period=monthly",
+            "schedule": "59 7 1 * *"
         }
     ]
 }

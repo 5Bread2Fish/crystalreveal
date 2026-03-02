@@ -84,6 +84,40 @@ export const authOptions: NextAuthOptions = {
                 session.user.credits = token.credits as number
                 session.user.creditExpiresAt = token.creditExpiresAt as Date
             }
+
+            // Critical: Fetch latest profile data from DB to ensure settings updates persist
+            // The token might be stale if jwt callback didn't run or update trigger wasn't fully effective
+            if (session.user?.email) {
+                try {
+                    const freshUser = await prisma.user.findUnique({
+                        where: { email: session.user.email },
+                        select: {
+                            businessName: true,
+                            ownerName: true,
+                            phoneNumber: true,
+                            website: true,
+                            country: true,
+                            pregnancyWeeks: true,
+                            monthlyScanVolume: true,
+                            marketingAgreed: true
+                        }
+                    });
+
+                    if (freshUser) {
+                        (session.user as any).businessName = freshUser.businessName;
+                        (session.user as any).ownerName = freshUser.ownerName;
+                        (session.user as any).phoneNumber = freshUser.phoneNumber;
+                        (session.user as any).website = freshUser.website;
+                        (session.user as any).country = freshUser.country;
+                        (session.user as any).pregnancyWeeks = freshUser.pregnancyWeeks;
+                        (session.user as any).monthlyScanVolume = freshUser.monthlyScanVolume;
+                        (session.user as any).marketingAgreed = freshUser.marketingAgreed;
+                    }
+                } catch (e) {
+                    console.error("Failed to refresh session user data", e);
+                }
+            }
+
             return session
         }
     },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BarChart3, FileText, CreditCard, Users, Calendar, Search, Loader2, ArrowLeft, TrendingUp, DollarSign, Image as ImageIcon, UserCheck, Download } from "lucide-react";
+import { BarChart3, FileText, CreditCard, Users, Calendar, Search, Loader2, ArrowLeft, TrendingUp, DollarSign, Image as ImageIcon, UserCheck, Download, Eye, EyeOff, Check, X } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -11,6 +11,7 @@ type TabType = "overview" | "generations" | "billing" | "users";
 export default function AdminPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [activeTab, setActiveTab] = useState<TabType>("overview");
     const [loginError, setLoginError] = useState("");
 
@@ -39,13 +40,22 @@ export default function AdminPage() {
                     </div>
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Password"
-                                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Password"
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
+                            </div>
                             {loginError && (
                                 <p className="text-red-500 text-sm mt-2">{loginError}</p>
                             )}
@@ -190,15 +200,22 @@ function OverviewTab() {
             <div className="grid md:grid-cols-3 gap-6">
                 <StatCard
                     icon={DollarSign}
+                    label="Total Revenue"
+                    value={stats?.revenue || 0}
+                    color="green"
+                    prefix="$"
+                />
+                <StatCard
+                    icon={CreditCard}
                     label="Credits Purchased"
                     value={stats?.creditsPurchased || 0}
-                    color="green"
+                    color="blue"
                 />
                 <StatCard
                     icon={ImageIcon}
                     label="Images Generated"
                     value={stats?.imagesGenerated || 0}
-                    color="blue"
+                    color="purple"
                 />
                 <StatCard
                     icon={ImageIcon}
@@ -229,11 +246,12 @@ function OverviewTab() {
     );
 }
 
-function StatCard({ icon: Icon, label, value, color }: {
+function StatCard({ icon: Icon, label, value, color, prefix }: {
     icon: any;
     label: string;
     value: number;
-    color: "green" | "blue" | "purple" | "orange" | "indigo" | "pink"
+    color: "green" | "blue" | "purple" | "orange" | "indigo" | "pink";
+    prefix?: string;
 }) {
     const colors: Record<string, string> = {
         green: "bg-green-100 text-green-600",
@@ -252,7 +270,7 @@ function StatCard({ icon: Icon, label, value, color }: {
                 </div>
                 <div className="text-sm font-medium text-gray-600">{label}</div>
             </div>
-            <div className="text-3xl font-bold text-gray-900">{value.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-gray-900">{prefix}{value.toLocaleString()}</div>
         </div>
     );
 }
@@ -269,6 +287,30 @@ function GenerationsTab() {
     });
     const [isExporting, setIsExporting] = useState(false);
 
+    const countryMap: Record<string, string> = {
+        "US": "United States",
+        "KR": "South Korea",
+        "GB": "United Kingdom",
+        "CA": "Canada",
+        "AU": "Australia",
+        "JP": "Japan",
+        "CN": "China",
+        "DE": "Germany",
+        "FR": "France",
+        "AE": "UAE",
+        "ID": "Indonesia",
+        "VN": "Vietnam",
+        "MX": "Mexico",
+        "ES": "Spain",
+        "TR": "Turkey",
+        "TH": "Thailand"
+    };
+
+    const getFullCountryName = (code: string | null) => {
+        if (!code) return "Unknown";
+        return countryMap[code.toUpperCase()] || code;
+    };
+
     useEffect(() => {
         fetchGenerations();
     }, [page, dateRange]);
@@ -279,8 +321,9 @@ function GenerationsTab() {
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: "50",
-                startDate: dateRange.start,
-                endDate: dateRange.end
+                // Convert to Local Midnight for Start, End of Day for End
+                startDate: dateRange.start ? new Date(new Date(dateRange.start).setHours(0, 0, 0, 0)).toISOString() : "",
+                endDate: dateRange.end ? new Date(new Date(dateRange.end).setHours(23, 59, 59, 999)).toISOString() : ""
             });
             if (search.value) {
                 params.append("search", search.column);
@@ -297,6 +340,24 @@ function GenerationsTab() {
         }
     };
 
+    const toggleFeature = async (id: string, currentStatus: boolean) => {
+        try {
+            const res = await fetch(`/api/admin/generations/${id}/feature`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isFeatured: !currentStatus })
+            });
+
+            if (res.ok) {
+                setGenerations(prev => prev.map(gen =>
+                    gen.id === id ? { ...gen, isFeatured: !currentStatus } : gen
+                ));
+            }
+        } catch (error) {
+            console.error("Failed to toggle feature", error);
+        }
+    };
+
     const handleSearch = () => {
         setPage(1);
         fetchGenerations();
@@ -308,8 +369,8 @@ function GenerationsTab() {
             const params = new URLSearchParams({
                 page: "1",
                 limit: "10000",
-                startDate: dateRange.start,
-                endDate: dateRange.end
+                startDate: dateRange.start ? new Date(new Date(dateRange.start).setHours(0, 0, 0, 0)).toISOString() : "",
+                endDate: dateRange.end ? new Date(new Date(dateRange.end).setHours(23, 59, 59, 999)).toISOString() : ""
             });
             if (search.value) {
                 params.append("search", search.column);
@@ -447,6 +508,7 @@ function GenerationsTab() {
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Images</th>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Ratings</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Feature</th>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Location</th>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Date</th>
                                     </tr>
@@ -475,13 +537,35 @@ function GenerationsTab() {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex flex-col gap-1 text-xs">
-                                                    {gen.basicRating && <span className="text-yellow-600">Basic: {gen.basicRating}★</span>}
-                                                    {gen.advancedRating && <span className="text-purple-600">Adv: {gen.advancedRating}★</span>}
-                                                    {!gen.basicRating && !gen.advancedRating && <span className="text-gray-400">-</span>}
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-gray-500 w-8">Basic:</span>
+                                                        <span className="font-medium text-gray-900">{gen.basicRating || "-"}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-gray-500 w-8">Adv:</span>
+                                                        <span className="font-medium text-gray-900">{gen.advancedRating || "-"}</span>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3">
-                                                <div className="text-gray-900">{gen.country || "Unknown"}</div>
+                                                <button
+                                                    onClick={() => toggleFeature(gen.id, gen.isFeatured)}
+                                                    className={cn(
+                                                        "p-1.5 rounded-full transition-colors",
+                                                        gen.isFeatured ? "bg-yellow-100 text-yellow-600 hover:bg-yellow-200" : "text-gray-300 hover:text-yellow-500 hover:bg-gray-100"
+                                                    )}
+                                                    title={gen.isFeatured ? "Unfeature" : "Feature on Homepage"}
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill={gen.isFeatured ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                    </svg>
+                                                </button>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <td className="px-4 py-3">
+                                                    <div className="text-gray-900">{getFullCountryName(gen.country)}</div>
+                                                    <div className="text-xs text-gray-500">{gen.ip || "N/A"}</div>
+                                                </td>
                                                 <div className="text-xs text-gray-500">{gen.ip || "N/A"}</div>
                                             </td>
                                             <td className="px-4 py-3 text-gray-600 text-xs">
@@ -547,21 +631,27 @@ function BillingTab() {
     const [search, setSearch] = useState({ column: "email", value: "" });
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState<any>(null);
-    const [freePromotion, setFreePromotion] = useState(false);
-    const [promotionLoading, setPromotionLoading] = useState(false);
+    const [dateRange, setDateRange] = useState({
+        start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+    });
+    const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => {
         fetchTransactions();
         fetchPromotionStatus();
-    }, [page]);
+    }, [page, dateRange]);
+
+    const [freePromotion, setFreePromotion] = useState(false);
+    const [promotionLoading, setPromotionLoading] = useState(false);
 
     const fetchPromotionStatus = async () => {
         try {
             const res = await fetch('/api/admin/promotion');
             const data = await res.json();
-            setFreePromotion(data.freeUnlockMode || false);
-        } catch (e) {
-            console.error('Failed to fetch promotion status:', e);
+            setFreePromotion(data.freeUnlockMode);
+        } catch (error) {
+            console.error('Failed to fetch promotion status:', error);
         }
     };
 
@@ -571,19 +661,15 @@ function BillingTab() {
             const res = await fetch('/api/admin/promotion', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    freeUnlockMode: !freePromotion,
-                    adminId: 'admin'
-                })
+                body: JSON.stringify({ freeUnlockMode: !freePromotion })
             });
-            const data = await res.json();
-            if (data.success) {
+
+            if (res.ok) {
+                const data = await res.json();
                 setFreePromotion(data.freeUnlockMode);
-                alert(`Free Promotion ${data.freeUnlockMode ? 'ENABLED' : 'DISABLED'}! Users can now ${data.freeUnlockMode ? 'unlock images for free' : 'only unlock with credits'}.`);
             }
-        } catch (e) {
-            console.error('Failed to toggle promotion:', e);
-            alert('Failed to toggle promotion mode');
+        } catch (error) {
+            console.error('Failed to toggle promotion:', error);
         } finally {
             setPromotionLoading(false);
         }
@@ -594,7 +680,9 @@ function BillingTab() {
         try {
             const params = new URLSearchParams({
                 page: page.toString(),
-                limit: "50"
+                limit: "50",
+                startDate: dateRange.start,
+                endDate: dateRange.end
             });
             if (search.value) {
                 params.append("search", search.column);
@@ -616,9 +704,61 @@ function BillingTab() {
         fetchTransactions();
     };
 
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            const params = new URLSearchParams({
+                page: "1",
+                limit: "10000",
+                startDate: dateRange.start,
+                endDate: dateRange.end
+            });
+            if (search.value) {
+                params.append("search", search.column);
+                params.append("value", search.value);
+            }
+
+            const res = await fetch(`/api/admin/billing?${params}`);
+            const data = await res.json();
+            const exportData = data.transactions || [];
+
+            const headers = ["ID", "User Email", "Type", "Transaction", "Amount", "Credits", "Expires", "Date"];
+            const csvContent = [
+                headers.join(","),
+                ...exportData.map((tx: any) => [
+                    tx.id,
+                    tx.user?.email || "N/A",
+                    tx.user?.userType || "N/A",
+                    tx.transactionType,
+                    tx.amountPaid || "0",
+                    tx.creditsChange,
+                    tx.expiresAt ? new Date(tx.expiresAt).toISOString() : "",
+                    new Date(tx.createdAt).toISOString()
+                ].map((field: any) => `"${String(field || "").replace(/"/g, '""')}"`).join(","))
+            ].join("\n");
+
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", `billing_${new Date().toISOString().split('T')[0]}.csv`);
+                link.style.visibility = "hidden";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        } catch (error) {
+            console.error("Export failed", error);
+            alert("Export failed");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
-            {/* Free Promotion Toggle */}
+            {/* Free Promotion Toggle (Keep existing) */}
             <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-2xl border-2 border-purple-200">
                 <div className="flex items-center justify-between">
                     <div>
@@ -651,35 +791,72 @@ function BillingTab() {
                 </div>
             </div>
 
-            {/* Search */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-200">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Search className="w-5 h-5" />
-                    Search Transactions
-                </h3>
-                <div className="flex gap-4">
-                    <select
-                        value={search.column}
-                        onChange={(e) => setSearch({ ...search, column: e.target.value })}
-                        className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
-                    >
-                        <option value="email">Email</option>
-                        <option value="userId">User ID</option>
-                        <option value="transactionType">Type</option>
-                    </select>
-                    <input
-                        type="text"
-                        value={search.value}
-                        onChange={(e) => setSearch({ ...search, value: e.target.value })}
-                        placeholder="Search value..."
-                        className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
-                    />
-                    <button
-                        onClick={handleSearch}
-                        className="px-6 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700"
-                    >
-                        Search
-                    </button>
+            <div className="grid md:grid-cols-2 gap-6">
+                {/* Search */}
+                <div className="bg-white p-6 rounded-2xl border border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Search className="w-5 h-5" />
+                        Search Transactions
+                    </h3>
+                    <div className="flex gap-4">
+                        <select
+                            value={search.column}
+                            onChange={(e) => setSearch({ ...search, column: e.target.value })}
+                            className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none w-1/3"
+                        >
+                            <option value="email">Email</option>
+                            <option value="userId">User ID</option>
+                            <option value="transactionType">Type</option>
+                        </select>
+                        <div className="flex flex-col gap-2 flex-1">
+                            <input
+                                type="text"
+                                value={search.value}
+                                onChange={(e) => setSearch({ ...search, value: e.target.value })}
+                                placeholder="Search..."
+                                className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none w-full"
+                            />
+                            <button
+                                onClick={handleSearch}
+                                className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700"
+                            >
+                                Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Date Range & Export */}
+                <div className="bg-white p-6 rounded-2xl border border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Calendar className="w-5 h-5" />
+                        Date Range & Export
+                    </h3>
+                    <div className="flex flex-col gap-4">
+                        <div className="flex gap-2">
+                            <input
+                                type="date"
+                                value={dateRange.start}
+                                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                                className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                            />
+                            <span className="self-center text-gray-400">to</span>
+                            <input
+                                type="date"
+                                value={dateRange.end}
+                                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                                className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                            />
+                        </div>
+                        <button
+                            onClick={handleExport}
+                            disabled={isExporting}
+                            className="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                            Export to CSV
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -784,17 +961,24 @@ function UsersTab() {
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [editForm, setEditForm] = useState<any>({});
     const [saving, setSaving] = useState(false);
+    const [dateRange, setDateRange] = useState({
+        start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+    });
+    const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => {
         fetchUsers();
-    }, [page]);
+    }, [page, dateRange]);
 
     const fetchUsers = async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams({
                 page: page.toString(),
-                limit: "50"
+                limit: "50",
+                startDate: dateRange.start,
+                endDate: dateRange.end
             });
             if (search.value) {
                 params.append("search", search.column);
@@ -816,6 +1000,58 @@ function UsersTab() {
         fetchUsers();
     };
 
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            const params = new URLSearchParams({
+                page: "1",
+                limit: "10000",
+                startDate: dateRange.start,
+                endDate: dateRange.end
+            });
+            if (search.value) {
+                params.append("search", search.column);
+                params.append("value", search.value);
+            }
+
+            const res = await fetch(`/api/admin/users?${params}`);
+            const data = await res.json();
+            const exportData = data.users || [];
+
+            const headers = ["ID", "Email", "Type", "Business Name", "Credits", "Status", "Country", "Created At"];
+            const csvContent = [
+                headers.join(","),
+                ...exportData.map((user: any) => [
+                    user.id,
+                    user.email,
+                    user.userType,
+                    user.businessName || "",
+                    user.credits,
+                    user.status,
+                    user.country || "",
+                    new Date(user.createdAt).toISOString()
+                ].map((field: any) => `"${String(field || "").replace(/"/g, '""')}"`).join(","))
+            ].join("\n");
+
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", `users_${new Date().toISOString().split('T')[0]}.csv`);
+                link.style.visibility = "hidden";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        } catch (error) {
+            console.error("Export failed", error);
+            alert("Export failed");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     const openEditModal = async (user: any) => {
         setSelectedUser(user);
         setEditForm({
@@ -823,7 +1059,11 @@ function UsersTab() {
             creditExpiresAt: user.creditExpiresAt ? new Date(user.creditExpiresAt).toISOString().split('T')[0] : '',
             userType: user.userType,
             businessName: user.businessName || '',
+            ownerName: user.ownerName || '',
             phoneNumber: user.phoneNumber || '',
+            website: user.website || '',
+            monthlyScanVolume: user.monthlyScanVolume || '',
+            country: user.country || '',
             status: user.status || 'active'
         });
     };
@@ -841,7 +1081,10 @@ function UsersTab() {
             const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(editForm)
+                body: JSON.stringify({
+                    ...editForm,
+                    credits: parseInt(String(editForm.credits || 0))
+                })
             });
 
             const data = await res.json();
@@ -913,24 +1156,97 @@ function UsersTab() {
                                 </select>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
-                                <input
-                                    type="text"
-                                    value={editForm.businessName}
-                                    onChange={(e) => setEditForm({ ...editForm, businessName: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
-                                />
-                            </div>
+                            {editForm.userType === 'BUSINESS' ? (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.businessName}
+                                            onChange={(e) => setEditForm({ ...editForm, businessName: e.target.value })}
+                                            className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Owner Name</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.ownerName}
+                                            onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })}
+                                            className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.phoneNumber}
+                                            onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })}
+                                            className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.website}
+                                            onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
+                                            className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Scan Volume</label>
+                                        <select
+                                            value={editForm.monthlyScanVolume}
+                                            onChange={(e) => setEditForm({ ...editForm, monthlyScanVolume: e.target.value })}
+                                            className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                                        >
+                                            <option value="">Select Volume</option>
+                                            <option value="0-10">0-10</option>
+                                            <option value="11-20">11-20</option>
+                                            <option value="21-30">21-30</option>
+                                            <option value="31-40">31-40</option>
+                                            <option value="41-50">41-50</option>
+                                            <option value="51-60">51-60</option>
+                                            <option value="61-70">61-70</option>
+                                            <option value="71-80">71-80</option>
+                                            <option value="81-90">81-90</option>
+                                            <option value="91-100">91-100</option>
+                                            <option value="100+">100+</option>
+                                        </select>
+                                    </div>
+                                </>
+                            ) : (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Pregnancy Weeks</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.pregnancyWeeks || ''}
+                                        onChange={(e) => setEditForm({ ...editForm, pregnancyWeeks: e.target.value })}
+                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                                    />
+                                </div>
+                            )}
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                                <input
-                                    type="text"
-                                    value={editForm.phoneNumber}
-                                    onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })}
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                                <select
+                                    value={editForm.country}
+                                    onChange={(e) => setEditForm({ ...editForm, country: e.target.value })}
                                     className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
-                                />
+                                >
+                                    <option value="">Select Country</option>
+                                    <option value="United States">United States</option>
+                                    <option value="South Korea">South Korea</option>
+                                    <option value="United Kingdom">United Kingdom</option>
+                                    <option value="Canada">Canada</option>
+                                    <option value="Australia">Australia</option>
+                                    <option value="Japan">Japan</option>
+                                    <option value="China">China</option>
+                                    <option value="Germany">Germany</option>
+                                    <option value="France">France</option>
+                                    <option value="Other">Other</option>
+                                </select>
                             </div>
                         </div>
 
@@ -952,37 +1268,75 @@ function UsersTab() {
                         </div>
                     </div>
                 </div>
-            )}
+            )
+            }
 
-            {/* Search */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-200">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Search className="w-5 h-5" />
-                    Search Users
-                </h3>
-                <div className="flex gap-4">
-                    <select
-                        value={search.column}
-                        onChange={(e) => setSearch({ ...search, column: e.target.value })}
-                        className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
-                    >
-                        <option value="email">Email</option>
-                        <option value="userType">User Type</option>
-                        <option value="businessName">Business Name</option>
-                    </select>
-                    <input
-                        type="text"
-                        value={search.value}
-                        onChange={(e) => setSearch({ ...search, value: e.target.value })}
-                        placeholder="Search value..."
-                        className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none"
-                    />
-                    <button
-                        onClick={handleSearch}
-                        className="px-6 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700"
-                    >
-                        Search
-                    </button>
+            <div className="grid md:grid-cols-2 gap-6">
+                {/* Search */}
+                <div className="bg-white p-6 rounded-2xl border border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Search className="w-5 h-5" />
+                        Search Users
+                    </h3>
+                    <div className="flex gap-4">
+                        <select
+                            value={search.column}
+                            onChange={(e) => setSearch({ ...search, column: e.target.value })}
+                            className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none w-1/3"
+                        >
+                            <option value="email">Email</option>
+                            <option value="userType">User Type</option>
+                            <option value="businessName">Business Name</option>
+                        </select>
+                        <div className="flex flex-col gap-2 flex-1">
+                            <input
+                                type="text"
+                                value={search.value}
+                                onChange={(e) => setSearch({ ...search, value: e.target.value })}
+                                placeholder="Search..."
+                                className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none w-full"
+                            />
+                            <button
+                                onClick={handleSearch}
+                                className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700"
+                            >
+                                Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Date Range & Export */}
+                <div className="bg-white p-6 rounded-2xl border border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <Calendar className="w-5 h-5" />
+                        Date Range & Export
+                    </h3>
+                    <div className="flex flex-col gap-4">
+                        <div className="flex gap-2">
+                            <input
+                                type="date"
+                                value={dateRange.start}
+                                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                                className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                            />
+                            <span className="self-center text-gray-400">to</span>
+                            <input
+                                type="date"
+                                value={dateRange.end}
+                                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                                className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                            />
+                        </div>
+                        <button
+                            onClick={handleExport}
+                            disabled={isExporting}
+                            className="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                            Export to CSV
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1001,8 +1355,11 @@ function UsersTab() {
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Email</th>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Type</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Business</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Business / Owner</th>
                                         <th className="px-4 py-3 text-right font-semibold text-gray-700">Credits</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Location</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-gray-700">Volume</th>
+                                        <th className="px-4 py-3 text-center font-semibold text-gray-700">Mktg</th>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Expires</th>
                                         <th className="px-4 py-3 text-left font-semibold text-gray-700">Joined</th>
                                     </tr>
@@ -1031,8 +1388,24 @@ function UsersTab() {
                                                     {user.userType}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 text-gray-600">{user.businessName || "-"}</td>
+                                            <td className="px-4 py-3 text-gray-600">
+                                                <div>{user.businessName || "-"}</div>
+                                                <div className="text-xs text-gray-400">{user.ownerName || ""}</div>
+                                            </td>
                                             <td className="px-4 py-3 text-right font-bold text-purple-600">{user.credits}</td>
+                                            <td className="px-4 py-3 text-gray-600 text-xs">
+                                                {user.country || "-"}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-600 text-xs">
+                                                {user.monthlyScanVolume || "-"}
+                                            </td>
+                                            <td className="px-4 py-3 text-center">
+                                                {user.marketingAgreed ? (
+                                                    <Check className="w-4 h-4 text-green-500 mx-auto" />
+                                                ) : (
+                                                    <X className="w-4 h-4 text-gray-300 mx-auto" />
+                                                )}
+                                            </td>
                                             <td className="px-4 py-3 text-gray-600 text-xs">
                                                 {user.creditExpiresAt ? new Date(user.creditExpiresAt).toLocaleDateString() : "-"}
                                             </td>
@@ -1071,6 +1444,6 @@ function UsersTab() {
                     </>
                 )}
             </div>
-        </div>
+        </div >
     );
 }
