@@ -67,6 +67,6 @@ export default function middleware(request: NextRequest) {
 }
 
 export const config = {
-    // Match all internationalized pathnames including root
-    matcher: ['/', '/((?!api|admin|_next|.*\\..*).*)']
+    // API, 정적 파일(이미지 등)을 제외한 모든 접속 시도를 가로채서 언어 라우팅을 실행함
+    matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)']
 };
