@@ -29,10 +29,7 @@ const countryToLocaleMap: Record<string, string> = {
 const intlMiddleware = createMiddleware({
     locales,
     defaultLocale,
-    localePrefix: 'as-needed' // Default to as-needed (will omit prefix for default locale if using as-needed, or 'always')
-    // We'll use 'always' for explicit routing context or 'as-needed'. Usually 'always' is safer.
-    // Wait, let's use 'always' to ensure /en/ and /es/ are always explicitly in the URL? Let's use 'as-needed' to keep root URL clean for english if possible, but 'always' is often easier to debug.
-    // Let's use 'never' ? No, 'as-needed' is good.
+    localePrefix: 'always'
 });
 
 export default function middleware(request: NextRequest) {
@@ -59,7 +56,7 @@ export default function middleware(request: NextRequest) {
         const dynamicMiddleware = createMiddleware({
             locales,
             defaultLocale: detectedLocale,
-            localePrefix: 'as-needed'
+            localePrefix: 'always'
         });
 
         return dynamicMiddleware(request);
