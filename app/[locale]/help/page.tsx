@@ -7,6 +7,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { BASE_PATH } from "@/lib/basepath";
 
 export default function HelpPage() {
     const { data: session } = useSession();
@@ -27,7 +28,7 @@ export default function HelpPage() {
         e.preventDefault();
         setContactStatus("sending");
         try {
-            const res = await fetch("/api/contact", {
+            const res = await fetch(`${BASE_PATH}/api/contact`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(contactForm)

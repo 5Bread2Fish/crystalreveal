@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Loader2, Building, User, Check } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { cn } from "@/lib/utils";
+import { BASE_PATH } from "@/lib/basepath";
 import { useTranslations } from "next-intl";
 
 function SignUpContent() {
@@ -76,7 +77,7 @@ function SignUpContent() {
         setError("");
 
         try {
-            const res = await fetch("/api/auth/signup", {
+            const res = await fetch(`${BASE_PATH}/api/auth/signup`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ...formData, phoneNumber: `${formData.countryCode} ${formData.phoneNumber}`, userType }),

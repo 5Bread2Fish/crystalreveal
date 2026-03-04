@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { BASE_PATH } from "@/lib/basepath";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -134,7 +135,7 @@ export async function GET(req: NextRequest) {
 
         if (!sessionId) {
             // Redirect to home with error
-            return NextResponse.redirect(new URL('/?error=missing_session', req.url));
+            return NextResponse.redirect(new URL(`${BASE_PATH}/?error=missing_session`, req.url));
         }
 
         console.log(`GET request received for session: ${sessionId}`);
@@ -144,17 +145,17 @@ export async function GET(req: NextRequest) {
         if ('error' in result) {
             // result.error가 없을 경우를 대비해 기본 메시지('Unknown Error')를 넣어줍니다.
             const errorMessage = result.error || 'Unknown Error';
-            return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(errorMessage)}`, req.url));
+            return NextResponse.redirect(new URL(`${BASE_PATH}/?error=${encodeURIComponent(errorMessage)}`, req.url));
         }
 
         // Redirect to home with success message
         const credits = result.newCredits || 0;
         const alreadyProcessed = result.alreadyProcessed ? 'true' : 'false';
-        return NextResponse.redirect(new URL(`/?success=true&credits=${credits}&processed=${alreadyProcessed}`, req.url));
+        return NextResponse.redirect(new URL(`${BASE_PATH}/?success=true&credits=${credits}&processed=${alreadyProcessed}`, req.url));
 
     } catch (e) {
         console.error("GET Success Handler Error:", e);
-        return NextResponse.redirect(new URL('/?error=internal_error', req.url));
+        return NextResponse.redirect(new URL(`${BASE_PATH}/?error=internal_error`, req.url));
     }
 }
 

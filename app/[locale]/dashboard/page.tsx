@@ -9,6 +9,7 @@ import { User, CreditCard, Image as ImageIcon, Settings, LogOut, Loader2, Downlo
 import { cn } from "@/lib/utils";
 import { useLocale, useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { BASE_PATH } from "@/lib/basepath";
 
 // Force dynamic rendering to fix build error
 export const dynamic = 'force-dynamic';
@@ -127,11 +128,32 @@ function DashboardContent() {
 
 function OverviewTab({ session, setActiveTab }: { session: any, setActiveTab: (tab: any) => void }) {
     const t = useTranslations('dashboard');
+    const [imageStats, setImageStats] = useState({ generated: 0, unlocked: 0 });
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch(`${BASE_PATH}/api/images/gallery`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const images = data.images || [];
+                    setImageStats({
+                        generated: images.length,
+                        unlocked: images.filter((img: any) => img.unlocked).length
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to fetch image stats", e);
+            }
+        };
+        fetchStats();
+    }, []);
+
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold text-gray-900">{t('welcomeBack', { name: session.user.email?.split("@")[0] })}</h1>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                     <div className="text-sm text-gray-500 font-medium mb-1">{t('availableCredits')}</div>
                     <div className="text-3xl font-bold text-purple-600">{session.user.credits}</div>
@@ -142,7 +164,12 @@ function OverviewTab({ session, setActiveTab }: { session: any, setActiveTab: (t
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                     <div className="text-sm text-gray-500 font-medium mb-1">{t('imagesGenerated')}</div>
-                    <div className="text-3xl font-bold text-gray-900">{t('viewAll')}</div>
+                    <div className="text-3xl font-bold text-gray-900">{imageStats.generated}</div>
+                    <button onClick={() => setActiveTab("gallery")} className="mt-4 block text-sm text-gray-600 font-semibold hover:underline">{t('goToGallery')}</button>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                    <div className="text-sm text-gray-500 font-medium mb-1">Images Unlocked</div>
+                    <div className="text-3xl font-bold text-green-600">{imageStats.unlocked}</div>
                     <button onClick={() => setActiveTab("gallery")} className="mt-4 block text-sm text-gray-600 font-semibold hover:underline">{t('goToGallery')}</button>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
@@ -178,7 +205,7 @@ function GalleryTab() {
     const t = useTranslations('dashboard');
 
     useEffect(() => {
-        fetch("/api/user/gallery")
+        fetch(`${BASE_PATH}/api/user/gallery`)
             .then(res => res.json())
             .then(data => {
                 if (data.images) setImages(data.images);
@@ -188,7 +215,7 @@ function GalleryTab() {
 
     const handleUnlock = async (imageId: string) => {
         try {
-            const res = await fetch('/api/images/unlock', {
+            const res = await fetch(`${BASE_PATH}/api/images/unlock`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ imageId })
@@ -198,7 +225,7 @@ function GalleryTab() {
 
             if (data.success) {
                 // Refresh gallery to show unlocked image
-                const galleryRes = await fetch("/api/user/gallery");
+                const galleryRes = await fetch(`${BASE_PATH}/api/user/gallery`);
                 const galleryData = await galleryRes.json();
                 if (galleryData.images) setImages(galleryData.images);
 
@@ -420,7 +447,7 @@ function BillingTab({ session }: { session: any }) {
     const [transactions, setTransactions] = useState<any[]>([]);
 
     useEffect(() => {
-        fetch("/api/user/transactions")
+        fetch(`${BASE_PATH}/api/user/transactions`)
             .then(res => res.json())
             .then(data => {
                 if (data.transactions) setTransactions(data.transactions);
@@ -539,7 +566,7 @@ function SettingsTab({ session }: { session: any }) {
         setMessage({ type: "", text: "" });
 
         try {
-            const res = await fetch("/api/user/settings", {
+            const res = await fetch(`${BASE_PATH}/api/user/settings`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),
@@ -781,7 +808,7 @@ function DeleteAccountButton() {
         setIsDeleting(true);
 
         try {
-            const res = await fetch("/api/user/delete-account", {
+            const res = await fetch(`${BASE_PATH}/api/user/delete-account`, {
                 method: "POST",
             });
 
@@ -899,7 +926,7 @@ function PasswordChangeForm() {
         setLoading(true);
 
         try {
-            const res = await fetch("/api/user/password", {
+            const res = await fetch(`${BASE_PATH}/api/user/password`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

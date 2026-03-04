@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BASE_PATH } from "@/lib/basepath";
 
 interface FeaturedImage {
     id: string;
@@ -21,7 +22,7 @@ export function FeaturedCarousel() {
     const [compareMode, setCompareMode] = useState<"original" | "basic" | "advanced">("advanced");
 
     useEffect(() => {
-        fetch("/api/featured-images")
+        fetch(`${BASE_PATH}/api/featured-images`)
             .then(res => res.json())
             .then(data => {
                 if (data.images) setImages(data.images);

@@ -6,6 +6,7 @@ import { Upload, Sparkles, Lock, Maximize2, X, ChevronLeft, ChevronRight, Zap, U
 import Link from "next/link";
 import { FeaturedCarousel } from "@/app/components/FeaturedCarousel";
 import { cn } from "@/lib/utils";
+import { BASE_PATH } from "@/lib/basepath";
 import { upload } from "@vercel/blob/client";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -33,17 +34,17 @@ interface GeneratedImages {
 const packages = [
     {
         credits: 1,
-        price: 9.99,
-        originalPrice: 9.99, // No discount shown for single
+        price: 19.99,
+        originalPrice: 19.99, // No discount shown for single
         name: "Pay-As-You-Go",
         description: "Perfect for expectant mothers to enhance their own photos.",
         icon: Sparkles,
         features: ["1 High-Quality Image", "Instant 8K Upgrade"],
         lookupKey: "credit_payg19",
-        unitPrice: "$9.99/generation"
+        unitPrice: "$19.99/generation"
     },
     {
-        credits: 20,
+        credits: 10,
         price: 99,
         originalPrice: 199.8,
         name: "Starter",
@@ -54,7 +55,7 @@ const packages = [
         unitPrice: "$9.99/generation"
     },
     {
-        credits: 50,
+        credits: 25,
         price: 199,
         originalPrice: 499.5,
         name: "Basic",
@@ -65,7 +66,7 @@ const packages = [
         unitPrice: "$7.99/generation"
     },
     {
-        credits: 100,
+        credits: 50,
         price: 299,
         originalPrice: 999,
         name: "Pro",
@@ -147,7 +148,7 @@ export default function Home() {
     useEffect(() => {
         const fetchGallery = async () => {
             try {
-                const res = await fetch("/api/gallery/list");
+                const res = await fetch(`${BASE_PATH}/api/gallery/list`);
                 if (res.ok) {
                     const data = await res.json();
                     let items = data.gallery || [];
@@ -177,7 +178,7 @@ export default function Home() {
     useEffect(() => {
         if (status === "authenticated" && session?.user && guestSessionId) {
             // Call migration API
-            fetch("/api/user/migrate-images", {
+            fetch(`${BASE_PATH}/api/user/migrate-images`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ guestSessionId })
@@ -261,7 +262,7 @@ export default function Home() {
         }
 
         try {
-            const res = await fetch("/api/generate", {
+            const res = await fetch(`${BASE_PATH}/api/generate`, {
                 method: "POST",
                 body: formData,
             });
@@ -330,7 +331,7 @@ export default function Home() {
             window.history.replaceState({}, document.title, "/");
 
             // Call Success API
-            fetch("/api/checkout/success", {
+            fetch(`${BASE_PATH}/api/checkout/success`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ sessionId })
@@ -364,13 +365,13 @@ export default function Home() {
             let lookupKey = "";
             switch (credits) {
                 case 1: lookupKey = "credit_payg19"; break;
-                case 20: lookupKey = "credit_starter"; break;
-                case 50: lookupKey = "credit_basic"; break;
-                case 100: lookupKey = "credit_pro"; break;
+                case 10: lookupKey = "credit_starter"; break;
+                case 25: lookupKey = "credit_basic"; break;
+                case 50: lookupKey = "credit_pro"; break;
                 default: lookupKey = "credit_payg19";
             }
 
-            const res = await fetch("/api/checkout", {
+            const res = await fetch(`${BASE_PATH}/api/checkout`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -423,7 +424,7 @@ export default function Home() {
         // Remove popup confirmation - unlock immediately
         try {
             setLoading(true);
-            const res = await fetch("/api/images/unlock", {
+            const res = await fetch(`${BASE_PATH}/api/images/unlock`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ imageId: generatedImages.id })
@@ -458,7 +459,7 @@ export default function Home() {
             if (pending) {
                 try {
                     const { id } = JSON.parse(pending);
-                    fetch("/api/images/claim", {
+                    fetch(`${BASE_PATH}/api/images/claim`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ imageId: id })
@@ -478,7 +479,7 @@ export default function Home() {
         if (!generatedImages?.id) return;
 
         try {
-            await fetch("/api/images/rate", {
+            await fetch(`${BASE_PATH}/api/images/rate`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -1155,13 +1156,7 @@ export default function Home() {
             <section id="pricing" className="py-24 bg-white relative">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center mb-16 space-y-4">
-                        <div className="inline-block bg-purple-100 text-purple-700 px-4 py-1 rounded-full text-sm font-bold mb-4">
-                            {t('pricing.limitedDeal')}
-                        </div>
-                        <div className="flex justify-center items-center gap-2 text-sm text-red-500 font-bold bg-red-50 py-1 px-3 rounded-lg w-fit mx-auto mb-2 animate-pulse">
-                            <Timer className="w-4 h-4" />
-                            <span>{t('pricing.promoEnds', { time: timeLeftToPromo })}</span>
-                        </div>
+
                         <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">{t('pricing.title')}</h2>
                         <p className="text-xl text-gray-500 max-w-2xl mx-auto">
                             {t('pricing.subtitle').split('\n').map((line, i) => (<span key={i}>{line}<br /></span>))}

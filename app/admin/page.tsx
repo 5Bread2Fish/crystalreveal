@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { BarChart3, FileText, CreditCard, Users, Calendar, Search, Loader2, ArrowLeft, TrendingUp, DollarSign, Image as ImageIcon, UserCheck, Download, Eye, EyeOff, Check, X } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { BASE_PATH } from "@/lib/basepath";
 import Image from "next/image";
 
 type TabType = "overview" | "generations" | "billing" | "users";
@@ -148,7 +149,7 @@ function OverviewTab() {
     const fetchStats = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/admin/overview?startDate=${dateRange.start}&endDate=${dateRange.end}`);
+            const res = await fetch(`${BASE_PATH}/api/admin/overview?startDate=${dateRange.start}&endDate=${dateRange.end}`);
             const data = await res.json();
             setStats(data);
         } catch (e) {
@@ -329,7 +330,7 @@ function GenerationsTab() {
                 params.append("search", search.column);
                 params.append("value", search.value);
             }
-            const res = await fetch(`/api/admin/generations?${params}`);
+            const res = await fetch(`${BASE_PATH}/api/admin/generations?${params}`);
             const data = await res.json();
             setGenerations(data.generations || []);
             setPagination(data.pagination);
@@ -342,7 +343,7 @@ function GenerationsTab() {
 
     const toggleFeature = async (id: string, currentStatus: boolean) => {
         try {
-            const res = await fetch(`/api/admin/generations/${id}/feature`, {
+            const res = await fetch(`${BASE_PATH}/api/admin/generations/${id}/feature`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ isFeatured: !currentStatus })
@@ -377,7 +378,7 @@ function GenerationsTab() {
                 params.append("value", search.value);
             }
 
-            const res = await fetch(`/api/admin/generations?${params}`);
+            const res = await fetch(`${BASE_PATH}/api/admin/generations?${params}`);
             const data = await res.json();
             const exportData = data.generations || [];
 
@@ -647,7 +648,7 @@ function BillingTab() {
 
     const fetchPromotionStatus = async () => {
         try {
-            const res = await fetch('/api/admin/promotion');
+            const res = await fetch(`${BASE_PATH}/api/admin/promotion`);
             const data = await res.json();
             setFreePromotion(data.freeUnlockMode);
         } catch (error) {
@@ -658,7 +659,7 @@ function BillingTab() {
     const togglePromotion = async () => {
         setPromotionLoading(true);
         try {
-            const res = await fetch('/api/admin/promotion', {
+            const res = await fetch(`${BASE_PATH}/api/admin/promotion`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ freeUnlockMode: !freePromotion })
@@ -688,7 +689,7 @@ function BillingTab() {
                 params.append("search", search.column);
                 params.append("value", search.value);
             }
-            const res = await fetch(`/api/admin/billing?${params}`);
+            const res = await fetch(`${BASE_PATH}/api/admin/billing?${params}`);
             const data = await res.json();
             setTransactions(data.transactions || []);
             setPagination(data.pagination);
@@ -718,7 +719,7 @@ function BillingTab() {
                 params.append("value", search.value);
             }
 
-            const res = await fetch(`/api/admin/billing?${params}`);
+            const res = await fetch(`${BASE_PATH}/api/admin/billing?${params}`);
             const data = await res.json();
             const exportData = data.transactions || [];
 
@@ -984,7 +985,7 @@ function UsersTab() {
                 params.append("search", search.column);
                 params.append("value", search.value);
             }
-            const res = await fetch(`/api/admin/users?${params}`);
+            const res = await fetch(`${BASE_PATH}/api/admin/users?${params}`);
             const data = await res.json();
             setUsers(data.users || []);
             setPagination(data.pagination);
@@ -1014,7 +1015,7 @@ function UsersTab() {
                 params.append("value", search.value);
             }
 
-            const res = await fetch(`/api/admin/users?${params}`);
+            const res = await fetch(`${BASE_PATH}/api/admin/users?${params}`);
             const data = await res.json();
             const exportData = data.users || [];
 
@@ -1078,7 +1079,7 @@ function UsersTab() {
 
         setSaving(true);
         try {
-            const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
+            const res = await fetch(`${BASE_PATH}/api/admin/users/${selectedUser.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

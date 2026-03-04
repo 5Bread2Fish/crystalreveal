@@ -8,6 +8,7 @@ import { Check, Sparkles, Zap, Crown, User, HelpCircle, LogOut } from "lucide-re
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { BASE_PATH } from "@/lib/basepath";
 
 export default function PricingPage() {
     const { data: session } = useSession();
@@ -33,13 +34,13 @@ export default function PricingPage() {
             let lookupKey = "";
             switch (credits) {
                 case 1: lookupKey = "credit_payg19"; break;
-                case 20: lookupKey = "credit_starter"; break;
-                case 50: lookupKey = "credit_basic"; break;
-                case 100: lookupKey = "credit_pro"; break;
+                case 10: lookupKey = "credit_starter"; break;
+                case 25: lookupKey = "credit_basic"; break;
+                case 50: lookupKey = "credit_pro"; break;
                 default: lookupKey = "credit_payg19";
             }
 
-            const res = await fetch("/api/checkout", {
+            const res = await fetch(`${BASE_PATH}/api/checkout`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -66,16 +67,16 @@ export default function PricingPage() {
     const packages = [
         {
             credits: 1,
-            price: 9.99,
+            price: 19.99,
             name: "Pay-As-You-Go",
             description: "Just one enhancement.",
             icon: Sparkles,
             features: ["1 High-Quality Image", "Instant 8K Upgrade"],
             link: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03", // Update links as needed
-            unitPrice: "$9.99/generation"
+            unitPrice: "$19.99/generation"
         },
         {
-            credits: 20,
+            credits: 10,
             price: 99,
             name: "Starter",
             description: "Perfect for a single session.",
@@ -85,7 +86,7 @@ export default function PricingPage() {
             unitPrice: "$9.99/generation"
         },
         {
-            credits: 50,
+            credits: 25,
             price: 199,
             name: "Basic",
             description: "Great for regular visits.",
@@ -95,7 +96,7 @@ export default function PricingPage() {
             unitPrice: "$7.99/generation"
         },
         {
-            credits: 100,
+            credits: 50,
             price: 299,
             name: "Pro",
             description: "Best choice for frequent users.",

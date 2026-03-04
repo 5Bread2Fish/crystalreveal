@@ -6,9 +6,9 @@ export const dynamic = 'force-dynamic';
 // 1. Lookup Key Mapping Table (Constant)
 const LOOKUP_KEY_MAPPING: Record<string, string> = {
     "1": "credit_payg19",
-    "20": "credit_starter",
-    "50": "credit_basic",
-    "100": "credit_pro"
+    "10": "credit_starter",
+    "25": "credit_basic",
+    "50": "credit_pro"
 };
 
 export async function POST(req: NextRequest) {
@@ -61,8 +61,8 @@ export async function POST(req: NextRequest) {
             ],
             mode: "payment",
             allow_promotion_codes: true,
-            success_url: `${req.headers.get("origin")}/api/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${req.headers.get("origin")}/?canceled=true`,
+            success_url: `${req.headers.get("origin")}/crystalreveal/api/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${req.headers.get("origin")}/crystalreveal/?canceled=true`,
             metadata: {
                 userId: userId || "",
                 credits: credits?.toString(),
