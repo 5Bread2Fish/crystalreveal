@@ -20,18 +20,6 @@ const nextConfig = {
             },
         ],
     },
-    async rewrites() {
-        return {
-            beforeFiles: [
-                {
-                    source: '/',
-                    destination: '/en',
-                },
-            ],
-            afterFiles: [],
-            fallback: [],
-        };
-    },
 };
 
 export default withNextIntl(nextConfig);
