@@ -27,6 +27,18 @@ const nextConfig = {
                 destination: '/en',
                 permanent: false,
             },
+            {
+                source: '/crystalreveal',
+                destination: '/crystalreveal/en',
+                basePath: false,
+                permanent: false,
+            },
+            {
+                source: '/crystalreveal/',
+                destination: '/crystalreveal/en',
+                basePath: false,
+                permanent: false,
+            },
         ];
     },
 };
