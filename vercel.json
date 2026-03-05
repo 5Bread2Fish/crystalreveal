@@ -1,4 +1,340 @@
 {
+    "redirects": [
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "ES"
+                }
+            ],
+            "destination": "/crystalreveal/es",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "MX"
+                }
+            ],
+            "destination": "/crystalreveal/es",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "AR"
+                }
+            ],
+            "destination": "/crystalreveal/es",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "CO"
+                }
+            ],
+            "destination": "/crystalreveal/es",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "JP"
+                }
+            ],
+            "destination": "/crystalreveal/ja",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "CN"
+                }
+            ],
+            "destination": "/crystalreveal/zh-CN",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "TW"
+                }
+            ],
+            "destination": "/crystalreveal/zh-CN",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "SG"
+                }
+            ],
+            "destination": "/crystalreveal/zh-CN",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "HK"
+                }
+            ],
+            "destination": "/crystalreveal/zh-HK",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "MO"
+                }
+            ],
+            "destination": "/crystalreveal/zh-HK",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "TH"
+                }
+            ],
+            "destination": "/crystalreveal/th",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "TR"
+                }
+            ],
+            "destination": "/crystalreveal/tr",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "AE"
+                }
+            ],
+            "destination": "/crystalreveal/ar",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "SA"
+                }
+            ],
+            "destination": "/crystalreveal/ar",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "EG"
+                }
+            ],
+            "destination": "/crystalreveal/ar",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "VN"
+                }
+            ],
+            "destination": "/crystalreveal/vi",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "ID"
+                }
+            ],
+            "destination": "/crystalreveal/id",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal",
+            "destination": "/crystalreveal/en",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal/",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "ES"
+                }
+            ],
+            "destination": "/crystalreveal/es",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal/",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "MX"
+                }
+            ],
+            "destination": "/crystalreveal/es",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal/",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "JP"
+                }
+            ],
+            "destination": "/crystalreveal/ja",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal/",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "CN"
+                }
+            ],
+            "destination": "/crystalreveal/zh-CN",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal/",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "HK"
+                }
+            ],
+            "destination": "/crystalreveal/zh-HK",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal/",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "TH"
+                }
+            ],
+            "destination": "/crystalreveal/th",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal/",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "TR"
+                }
+            ],
+            "destination": "/crystalreveal/tr",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal/",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "AE"
+                }
+            ],
+            "destination": "/crystalreveal/ar",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal/",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "VN"
+                }
+            ],
+            "destination": "/crystalreveal/vi",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal/",
+            "has": [
+                {
+                    "type": "header",
+                    "key": "x-vercel-ip-country",
+                    "value": "ID"
+                }
+            ],
+            "destination": "/crystalreveal/id",
+            "permanent": false
+        },
+        {
+            "source": "/crystalreveal/",
+            "destination": "/crystalreveal/en",
+            "permanent": false
+        }
+    ],
     "crons": [
         {
             "path": "/api/cron/expire-credits",
