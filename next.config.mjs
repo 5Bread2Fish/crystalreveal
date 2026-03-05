@@ -20,27 +20,6 @@ const nextConfig = {
             },
         ],
     },
-    async redirects() {
-        return [
-            {
-                source: '/',
-                destination: '/en',
-                permanent: false,
-            },
-            {
-                source: '/crystalreveal',
-                destination: '/crystalreveal/en',
-                basePath: false,
-                permanent: false,
-            },
-            {
-                source: '/crystalreveal/',
-                destination: '/crystalreveal/en',
-                basePath: false,
-                permanent: false,
-            },
-        ];
-    },
 };
 
 export default withNextIntl(nextConfig);
