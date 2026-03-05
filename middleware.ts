@@ -2,21 +2,23 @@ import createMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
 import { locales, defaultLocale } from './i18n-config';
 
-const countryToLocaleMap: Record<string, string> = {
+// 국가 코드 → locale 매핑
+const countryToLocale: Record<string, string> = {
     // Spanish
     'ES': 'es', 'MX': 'es', 'AR': 'es', 'CO': 'es', 'PE': 'es', 'VE': 'es', 'CL': 'es',
     'EC': 'es', 'GT': 'es', 'CU': 'es', 'BO': 'es', 'DO': 'es', 'HN': 'es', 'PY': 'es',
     'SV': 'es', 'NI': 'es', 'CR': 'es', 'PA': 'es', 'UY': 'es',
     // Japanese
     'JP': 'ja',
-    // Chinese
+    // Chinese (Simplified)
     'CN': 'zh-CN', 'TW': 'zh-CN', 'SG': 'zh-CN',
+    // Chinese (Hong Kong)
     'HK': 'zh-HK', 'MO': 'zh-HK',
     // Thai
     'TH': 'th',
     // Turkish
     'TR': 'tr',
-    // Arabic (UAE + major Arabic-speaking countries)
+    // Arabic
     'AE': 'ar', 'SA': 'ar', 'EG': 'ar', 'JO': 'ar', 'KW': 'ar', 'QA': 'ar', 'BH': 'ar',
     'OM': 'ar', 'IQ': 'ar', 'LB': 'ar', 'LY': 'ar', 'MA': 'ar', 'DZ': 'ar', 'TN': 'ar',
     // Vietnamese
@@ -25,48 +27,24 @@ const countryToLocaleMap: Record<string, string> = {
     'ID': 'id',
 };
 
-// Create a middleware instance with default settings
 const intlMiddleware = createMiddleware({
     locales,
-    defaultLocale,
-    localePrefix: 'always'
+    defaultLocale
 });
 
-export default function middleware(request: NextRequest) {
-    const { pathname } = request.nextUrl;
+export default function middleware(req: NextRequest) {
+    const country = req.headers.get('x-vercel-ip-country') || 'US';
 
-    // Don't localize api, admin, Next.js internal routes
-    const isPublicRoute = /^\/((api|admin|_next)(?:\/.*)?)$/.test(pathname);
-    if (isPublicRoute) {
-        return NextResponse.next();
+    // 루트 경로('/') 접속 시, 국가에 맞춰 강제 리다이렉트
+    if (req.nextUrl.pathname === '/') {
+        const targetLocale = countryToLocale[country] || 'en';
+        return NextResponse.redirect(new URL(`/${targetLocale}`, req.url));
     }
 
-    // Next-intl automatically handles NEXT_LOCALE cookie if it's set.
-    // If no locale cookie exists, and the user visits the root / or a path without a locale prefix,
-    // we can override the defaultLocale based on IP.
-    const hasLocaleCookie = request.cookies.has('NEXT_LOCALE');
-
-    if (!hasLocaleCookie) {
-        // Vercel populates 'x-vercel-ip-country' header
-        const country = request.geo?.country || request.headers.get('x-vercel-ip-country');
-        const detectedLocale = (country && countryToLocaleMap[country] ? countryToLocaleMap[country] : defaultLocale) as typeof locales[number];
-
-        // We can create a dynamic instance of the middleware just for this request 
-        // to use the detected locale as the default
-        const dynamicMiddleware = createMiddleware({
-            locales,
-            defaultLocale: detectedLocale,
-            localePrefix: 'always'
-        });
-
-        return dynamicMiddleware(request);
-    }
-
-    // If cookie exists, rely on standard next-intl logic
-    return intlMiddleware(request);
+    // 하위 경로는 next-intl이 정상 처리
+    return intlMiddleware(req);
 }
 
 export const config = {
-    // API, 정적 파일(이미지 등)을 제외한 모든 접속 시도를 가로채서 언어 라우팅을 실행함
-    matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)']
+    matcher: ['/((?!api|_next|.*\\..*).*)']
 };
