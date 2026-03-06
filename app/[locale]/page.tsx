@@ -648,6 +648,9 @@ export default function Home() {
                     </div>
                     <div className="flex items-center gap-4">
                         <LanguageSwitcher currentLocale={locale} />
+                        <Link href="/partners" className="p-2 text-gray-500 hover:text-purple-600 transition-colors" title="KOL">
+                            <Users className="w-5 h-5" />
+                        </Link>
                         <Link href="/admin" className="p-2 text-gray-500 hover:text-purple-600 transition-colors" title="Admin">
                             <Settings className="w-5 h-5" />
                         </Link>
