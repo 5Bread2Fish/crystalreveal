@@ -33,48 +33,48 @@ interface GeneratedImages {
 const packages = [
     {
         credits: 1,
-        price: 9.99,
-        originalPrice: 9.99, // No discount shown for single
+        price: 19.99,
+        originalPrice: 19.99, // No discount shown for single
         name: "Pay-As-You-Go",
         description: "Perfect for expectant mothers to enhance their own photos.",
         icon: Sparkles,
         features: ["1 High-Quality Image", "Instant 8K Upgrade"],
         lookupKey: "credit_payg19",
-        unitPrice: "$9.99/generation"
+        unitPrice: "$19.99/generation"
     },
     {
         credits: 20,
         price: 99,
-        originalPrice: 199.8,
+        originalPrice: 399.80,
         name: "Starter",
         description: "Best for studios testing demand with their clients.",
         icon: Zap,
         features: ["10 High-Quality Images", "Instant 8K Upgrade"],
         lookupKey: "credit_starter",
-        unitPrice: "$9.99/generation"
+        unitPrice: "$4.95/generation"
     },
     {
         credits: 50,
         price: 199,
-        originalPrice: 499.5,
+        originalPrice: 999.50,
         name: "Basic",
         description: "Discounted rates for growing ultrasound businesses.",
         icon: UserIcon,
         features: ["25 High-Quality Images", "Instant 8K Upgrade"],
         lookupKey: "credit_basic",
-        unitPrice: "$7.99/generation"
+        unitPrice: "$3.98/generation"
     },
     {
         credits: 100,
         price: 299,
-        originalPrice: 999,
+        originalPrice: 1999,
         name: "Pro",
         description: "The go-to choice for high-volume 3D/4D clinics.",
         icon: Crown,
         popular: true,
         features: ["50 High-Quality Images", "Instant 8K Upgrade"],
         lookupKey: "credit_pro",
-        unitPrice: "$5.99/generation"
+        unitPrice: "$2.99/generation"
     }
 ];
 

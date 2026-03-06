@@ -66,13 +66,13 @@ export default function PricingPage() {
     const packages = [
         {
             credits: 1,
-            price: 9.99,
+            price: 19.99,
             name: "Pay-As-You-Go",
             description: "Just one enhancement.",
             icon: Sparkles,
             features: ["1 High-Quality Image", "Instant 8K Upgrade"],
             link: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03", // Update links as needed
-            unitPrice: "$9.99/generation"
+            unitPrice: "$19.99/generation"
         },
         {
             credits: 20,
@@ -82,7 +82,7 @@ export default function PricingPage() {
             icon: Zap,
             features: ["10 High-Quality Images", "Instant 8K Upgrade"],
             link: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-            unitPrice: "$9.99/generation"
+            unitPrice: "$4.95/generation"
         },
         {
             credits: 50,
@@ -92,7 +92,7 @@ export default function PricingPage() {
             icon: User,
             features: ["25 High-Quality Images", "Instant 8K Upgrade"],
             link: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-            unitPrice: "$7.99/generation"
+            unitPrice: "$3.98/generation"
         },
         {
             credits: 100,
@@ -103,7 +103,7 @@ export default function PricingPage() {
             popular: true,
             features: ["50 High-Quality Images", "Instant 8K Upgrade"],
             link: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-            unitPrice: "$5.99/generation"
+            unitPrice: "$2.99/generation"
         }
     ];
 
