@@ -82,7 +82,7 @@ export default function PricingPage() {
             icon: Zap,
             features: ["10 High-Quality Images", "Instant 8K Upgrade"],
             link: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-            unitPrice: "$4.95/generation"
+            unitPrice: "$9.99/generation"
         },
         {
             credits: 50,
@@ -92,7 +92,7 @@ export default function PricingPage() {
             icon: User,
             features: ["25 High-Quality Images", "Instant 8K Upgrade"],
             link: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-            unitPrice: "$3.98/generation"
+            unitPrice: "$7.96/generation"
         },
         {
             credits: 100,
@@ -103,7 +103,7 @@ export default function PricingPage() {
             popular: true,
             features: ["50 High-Quality Images", "Instant 8K Upgrade"],
             link: "https://buy.stripe.com/4gM9ATdhx3k89jHbtmdEs03",
-            unitPrice: "$2.99/generation"
+            unitPrice: "$5.98/generation"
         }
     ];
 
