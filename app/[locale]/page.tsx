@@ -2,7 +2,7 @@
 
 import { useState, useRef, DragEvent, useEffect } from "react";
 import Image from "next/image";
-import { Upload, Sparkles, Lock, Maximize2, X, ChevronLeft, ChevronRight, Zap, Users, TrendingUp, Star, Check, Download, Loader2, User as UserIcon, LogOut, HelpCircle, Crown, Timer, RefreshCcw, ArrowRight, CreditCard, ExternalLink, Settings } from "lucide-react";
+import { Upload, Sparkles, Lock, Maximize2, X, ChevronLeft, ChevronRight, Zap, Users, TrendingUp, Star, Check, Download, Loader2, User as UserIcon, LogOut, HelpCircle, Crown, RefreshCcw, ArrowRight, CreditCard, ExternalLink, Settings } from "lucide-react";
 import Link from "next/link";
 import { FeaturedCarousel } from "@/app/components/FeaturedCarousel";
 import { cn } from "@/lib/utils";
@@ -294,31 +294,7 @@ export default function Home() {
         }
     };
 
-    // Promo Countdown Logic
-    const [timeLeftToPromo, setTimeLeftToPromo] = useState("");
 
-    useEffect(() => {
-        const targetDate = new Date("2026-02-28T23:59:59-08:00"); // Feb 28 PT
-
-        const updateCountdown = () => {
-            const now = new Date();
-            const difference = targetDate.getTime() - now.getTime();
-
-            if (difference > 0) {
-                const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-                const minutes = Math.floor((difference / 1000 / 60) % 60);
-                const seconds = Math.floor((difference / 1000) % 60);
-                setTimeLeftToPromo(`${days}d ${hours}h ${minutes}m ${seconds}s`);
-            } else {
-                setTimeLeftToPromo("Promo Ended");
-            }
-        };
-
-        const interval = setInterval(updateCountdown, 1000);
-        updateCountdown(); // Initial call
-        return () => clearInterval(interval);
-    }, []);
 
     // Verify Payment Success
     useEffect(() => {
@@ -1158,13 +1134,7 @@ export default function Home() {
             <section id="pricing" className="py-24 bg-white relative">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center mb-16 space-y-4">
-                        <div className="inline-block bg-purple-100 text-purple-700 px-4 py-1 rounded-full text-sm font-bold mb-4">
-                            {t('pricing.limitedDeal')}
-                        </div>
-                        <div className="flex justify-center items-center gap-2 text-sm text-red-500 font-bold bg-red-50 py-1 px-3 rounded-lg w-fit mx-auto mb-2 animate-pulse">
-                            <Timer className="w-4 h-4" />
-                            <span>{t('pricing.promoEnds', { time: timeLeftToPromo })}</span>
-                        </div>
+
                         <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">{t('pricing.title')}</h2>
                         <p className="text-xl text-gray-500 max-w-2xl mx-auto">
                             {t('pricing.subtitle').split('\n').map((line, i) => (<span key={i}>{line}<br /></span>))}
